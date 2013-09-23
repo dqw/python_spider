@@ -7,51 +7,78 @@ import gzip
 from urlparse import urlparse
 from BeautifulSoup import BeautifulSoup
 import re
+import Queue
+from threading import Thread
 
-def get_html(url):
-    response = urllib2.urlopen(url, timeout=5)
+class WorkerGetHtml(Thread):
+    def __init__(self, queueUrl, queueHtml):
+        Thread.__init__(self)
+        self.queueUrl = queueUrl
+        self.queueHtml = queueHtml
 
-    if response.info().get('Content-Encoding') == 'gzip':
-        buf = StringIO(response.read())
-        f = gzip.GzipFile(fileobj=buf)
-        html = f.read()
-    else:
-        html = response.read()
+    def run(self):
+        while True:
+            url = self.queueUrl.get()
+            print "[get]",url
+            response = urllib2.urlopen(url, timeout=5)
 
-    return html
+            if response.info().get('Content-Encoding') == 'gzip':
+                buf = StringIO(response.read())
+                f = gzip.GzipFile(fileobj=buf)
+                html = f.read()
+            else:
+                html = response.read()
 
-def get_domain(url):
-    hostname = urlparse(url).hostname
-    index = hostname.index('.')
-    return hostname[index + 1:]
+            self.queueHtml.put(html)
+            self.queueUrl.task_done()
 
-def get_link_array(html, hostname):
-    link_array = []
-    soup = BeautifulSoup(html)
-    #for link in soup.findAll('a'):
-    #for link in soup.findAll('a', attrs={'href': re.compile("^http://")}):
-    for link in soup.findAll('a', attrs={'href': re.compile("^http://" + ".*" + hostname)}):
-        link_array.append(link.get('href'))
-    return link_array
+class WorkerParserHtml(Thread):
+    def __init__(self, queueHtml, queueUrl):
+        Thread.__init__(self)
+        self.queueHtml = queueHtml
+        self.queueUrl = queueUrl
 
-def save_html(data):
-    fp = open("a.html","w+")
-    fp.write(data)
+    def run(self):
+        while True:
+            html = self.queueHtml.get()
+            soup = BeautifulSoup(html)
+            count = 0
+            for link in soup.findAll('a', attrs={'href': re.compile("^http://")}):
+                href = link.get('href')
+                print href
+                count = count + 1
+                #self.queueUrl.put(href)
+            print count
+            self.queueHtml.task_done()
 
-def print_html(data):
-    print data
+def main():
 
-def print_link(link_array):
-    for link in link_array:
-        print link
-    print len(link_array)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-u', dest="url", default="http://www.sina.com.cn", help="")
+    parser.add_argument("-d", type=int, dest="deep", default=1, help="")  
+    parser.add_argument("--thread", type=int, dest="deep", default=10, help="")  
+    parser.add_argument('--dbfile', dest="dbfile", default="page.db", help="")
+    parser.add_argument('--key', dest="key", default="", help="")
+    parser.add_argument('-l', dest="loglevel", default="1", help="")
+    parser.add_argument('--testself', dest="key", default="", help="")
+    args = parser.parse_args()
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-u', dest="url", default="http://www.sina.com.cn", help="")
-parser.add_argument("-d", type=int, dest="deep", default=1, help="")  
-args = parser.parse_args()
-html = get_html(args.url)
-link_array = get_link_array(html, get_domain(args.url))
-print_link(link_array)
-#save_html(html)
+    queueUrl = Queue.Queue()
+    queueUrl.put(args.url)
+    queueHtml = Queue.Queue()
 
+    t = WorkerGetHtml(queueUrl, queueHtml)
+    t.setDaemon(True)
+    t.start()
+
+    t1 = WorkerParserHtml(queueHtml, queueUrl)
+    t1.setDaemon(True)
+    t1.start()
+
+    queueUrl.join()
+    queueHtml.join()
+
+    #print queueUrl.qsize()
+
+if __name__ == "__main__":
+    main()
