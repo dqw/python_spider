@@ -19,8 +19,8 @@ class WorkerGetHtml(Thread):
     def run(self):
         while True:
             url = self.queueUrl.get()
-            print "[get]",url
-            response = urllib2.urlopen(url, timeout=5)
+            print "[get] %s %s" % (url[0], url[1])
+            response = urllib2.urlopen(url[1], timeout=5)
 
             if response.info().get('Content-Encoding') == 'gzip':
                 buf = StringIO(response.read())
@@ -29,7 +29,7 @@ class WorkerGetHtml(Thread):
             else:
                 html = response.read()
 
-            self.queueHtml.put(html)
+            self.queueHtml.put([url[0], html])
             self.queueUrl.task_done()
 
 class WorkerParserHtml(Thread):
@@ -41,13 +41,14 @@ class WorkerParserHtml(Thread):
     def run(self):
         while True:
             html = self.queueHtml.get()
-            soup = BeautifulSoup(html)
+            deep = html[0] + 1
+            soup = BeautifulSoup(html[1])
             count = 0
             for link in soup.findAll('a', attrs={'href': re.compile("^http://")}):
                 href = link.get('href')
-                print href
                 count = count + 1
-                #self.queueUrl.put(href)
+                self.queueUrl.put([deep, href])
+                print "[href] %s %s" % (deep, href)
             print count
             self.queueHtml.task_done()
 
@@ -64,7 +65,7 @@ def main():
     args = parser.parse_args()
 
     queueUrl = Queue.Queue()
-    queueUrl.put(args.url)
+    queueUrl.put([0, args.url])
     queueHtml = Queue.Queue()
 
     t = WorkerGetHtml(queueUrl, queueHtml)
@@ -77,8 +78,6 @@ def main():
 
     queueUrl.join()
     queueHtml.join()
-
-    #print queueUrl.qsize()
 
 if __name__ == "__main__":
     main()
