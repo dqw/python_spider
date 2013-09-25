@@ -1,13 +1,15 @@
-#!/usr/bin/pyhon
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import argparse
 import urllib2
-from StringIO import StringIO
 import gzip
-from urlparse import urlparse
-from BeautifulSoup import BeautifulSoup
 import re
 import Queue
+import logging
+from StringIO import StringIO
+from urlparse import urlparse
+from BeautifulSoup import BeautifulSoup
 from threading import Thread
 
 class WorkerGetHtml(Thread):
@@ -19,7 +21,7 @@ class WorkerGetHtml(Thread):
     def run(self):
         while True:
             url = self.queueUrl.get()
-            print "[get] %s %s" % (url[0], url[1])
+            logging.debug("[get] {0} {1}".format(url[0], url[1]))
             response = urllib2.urlopen(url[1], timeout=5)
 
             if response.info().get('Content-Encoding') == 'gzip':
@@ -48,7 +50,7 @@ class WorkerParserHtml(Thread):
                 href = link.get('href')
                 count = count + 1
                 self.queueUrl.put([deep, href])
-                print "[href] %s %s" % (deep, href)
+                logging.debug("[href] {0} {1}".format(deep, href))
             print count
             self.queueHtml.task_done()
 
@@ -60,9 +62,20 @@ def main():
     parser.add_argument("--thread", type=int, dest="deep", default=10, help="")  
     parser.add_argument('--dbfile', dest="dbfile", default="page.db", help="")
     parser.add_argument('--key', dest="key", default="", help="")
-    parser.add_argument('-l', dest="loglevel", default="1", help="")
+    parser.add_argument('-f', dest="logfile", default="spider.log", help="")
+    parser.add_argument('-l', dest="loglevel", default="5", type=int, help="")
     parser.add_argument('--testself', dest="key", default="", help="")
     args = parser.parse_args()
+
+    LEVELS = {
+        1:logging.CRITICAL,
+        2:logging.ERROR,
+        3:logging.WARNING,
+        4:logging.INFO,
+        5:logging.DEBUG
+    }
+    level = LEVELS[args.loglevel]
+    logging.basicConfig(filename=args.logfile,level=level)
 
     queueUrl = Queue.Queue()
     queueUrl.put([0, args.url])
