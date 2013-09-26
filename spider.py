@@ -6,17 +6,48 @@ import urllib2
 import gzip
 import re
 import Queue
+import sqlite3
 import logging
 from StringIO import StringIO
 from urlparse import urlparse
 from BeautifulSoup import BeautifulSoup
 from threading import Thread
 
+class SaveHtml():
+    def __init__(self, dbfile):
+        self.dbfile = dbfile
+
+        self.conn = sqlite3.connect(dbfile, check_same_thread = False)
+        #设置支持中文存储
+        self.conn.text_factory = str
+        self.cmd = self.conn.cursor()
+        self.cmd.execute('''
+            create table if not exists data(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                deep INTEGER,
+                url text,
+                html text
+            )
+        ''')
+        self.conn.commit()
+
+    def save(self, deep, url, html):
+        try:
+            self.cmd.execute("insert into data (deep, url, html) values (?,?,?)", (deep, url, html))
+            self.conn.commit()
+        except Exception,e:
+            print e
+
+    def close(self):
+        self.conn.close()
+
 class WorkerGetHtml(Thread):
-    def __init__(self, queueUrl, queueHtml):
+    def __init__(self, queueUrl, queueHtml, dbfile, deep):
         Thread.__init__(self)
         self.queueUrl = queueUrl
         self.queueHtml = queueHtml
+        self.deep = deep
+        self.save_html = SaveHtml(dbfile)
 
     def run(self):
         while True:
@@ -30,8 +61,11 @@ class WorkerGetHtml(Thread):
                 html = f.read()
             else:
                 html = response.read()
+            
+            if(url[0] <= self.deep):
+                self.save_html.save(url[0], url[1], html)
+                self.queueHtml.put([url[0], html])
 
-            self.queueHtml.put([url[0], html])
             self.queueUrl.task_done()
 
 class WorkerParserHtml(Thread):
@@ -59,7 +93,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', dest="url", default="http://www.sina.com.cn", help="")
     parser.add_argument("-d", type=int, dest="deep", default=1, help="")  
-    parser.add_argument("--thread", type=int, dest="deep", default=10, help="")  
+    parser.add_argument("--thread", type=int, dest="thread", default=10, help="")  
     parser.add_argument('--dbfile', dest="dbfile", default="page.db", help="")
     parser.add_argument('--key', dest="key", default="", help="")
     parser.add_argument('-f', dest="logfile", default="spider.log", help="")
@@ -81,7 +115,7 @@ def main():
     queueUrl.put([0, args.url])
     queueHtml = Queue.Queue()
 
-    t = WorkerGetHtml(queueUrl, queueHtml)
+    t = WorkerGetHtml(queueUrl, queueHtml, args.dbfile, args.deep)
     t.setDaemon(True)
     t.start()
 
