@@ -4,12 +4,13 @@
 import sys
 import argparse
 import threading
+import Queue
+import logging
 import urllib2
 import gzip
 import re
-import Queue
+import md5
 import sqlite3
-import logging
 from StringIO import StringIO
 from urlparse import urlparse
 from BeautifulSoup import BeautifulSoup
@@ -25,16 +26,17 @@ class SaveHtml():
         self.cmd.execute('''
             create table if not exists data(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                deep INTEGER,
                 url text,
+                url_hash text,
+                deep INTEGER,
                 html text
             )
         ''')
         self.conn.commit()
 
-    def save(self, deep, url, html):
+    def save(self, url, url_hash, deep, html):
         try:
-            self.cmd.execute("insert into data (deep, url, html) values (?,?,?)", (deep, url, html))
+            self.cmd.execute("insert into data (url, url_hash, deep, html) values (?,?,?,?)", (url, url_hash, deep, html))
             self.conn.commit()
         except Exception,e:
             print e
@@ -43,41 +45,44 @@ class SaveHtml():
         self.conn.close()
 
 class GetHtml(threading.Thread):
-    def __init__(self, queue_url, dbfile, deep):
+    def __init__(self, queue_url, dict_url, dbfile, deep):
         threading.Thread.__init__(self)
         self.queue_url = queue_url
+        self.dict_url = dict_url 
         self.dbfile = dbfile
         self.deep = deep
         self.save_html = SaveHtml(dbfile)
 
     def run(self):
         while True:
-            try:
-                url = self.queue_url.get()
+            url = self.queue_url.get()
+            url_hash = md5.new(url[1]).hexdigest()
+            logging.debug("{0} queue size {1}".format(self.getName(),
+                self.queue_url.qsize()))
 
-                logging.debug("{0} queue size {1}".format(self.getName(),
-                    self.queue_url.qsize()))
-
-                response = urllib2.urlopen(url[1], timeout=5)
-
-                if response.info().get('Content-Encoding') == 'gzip':
-                    buf = StringIO(response.read())
-                    f = gzip.GzipFile(fileobj=buf)
-                    html = f.read()
+            if not self.dict_url.has_key(url_hash):
+                self.dict_url[url_hash] = url[1]
+                try:
+                    response = urllib2.urlopen(url[1], timeout=5)
+                    if response.info().get('Content-Encoding') == 'gzip':
+                        buf = StringIO(response.read())
+                        f = gzip.GzipFile(fileobj=buf)
+                        html = f.read()
+                    else:
+                        html = response.read()
+                except:
+                    logging.error("Unexpected error:", sys.exc_info()[0])
                 else:
-                    html = response.read()
+                    if url[0] < self.deep:
+                        soup = BeautifulSoup(html)
+                        for link in soup.findAll('a',
+                                attrs={'href': re.compile("^http://")}):
+                            href = link.get('href')
+                            self.queue_url.put([url[0]+1, href])
+                            logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
 
-                if url[0] < 1:
-                    soup = BeautifulSoup(html)
-                    for link in soup.findAll('a',
-                            attrs={'href': re.compile("^http://")}):
-                        href = link.get('href')
-                        logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
-                        self.queue_url.put([url[0]+1, href])
-                self.save_html.save(url[0], url[1], html)
-                logging.debug("{0} downloaded {1}".format(self.getName(), url[1].encode("utf8")))
-            except:
-                logging.error("Unexpected error:", sys.exc_info()[0])
+                    self.save_html.save(url[1], url_hash, url[0], html)
+                    logging.debug("{0} downloaded {1}".format(self.getName(), url[1].encode("utf8")))
 
             self.queue_url.task_done()
 
@@ -108,12 +113,15 @@ def main():
     queue_url = Queue.Queue()
     queue_url.put([0, args.url])
 
-    for i in range(2):
-        thread_job = GetHtml(queue_url, args.dbfile, args.deep)
+    dict_url = {}
+
+    for i in range(args.thread):
+        thread_job = GetHtml(queue_url, dict_url, args.dbfile, args.deep)
         thread_job.setDaemon(True)
         thread_job.start()
 
     queue_url.join()
+    print len(dict_url)
 
 if __name__ == "__main__":
     main()
