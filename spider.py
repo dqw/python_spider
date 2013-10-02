@@ -1,7 +1,9 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 import argparse
+import threading
 import urllib2
 import gzip
 import re
@@ -11,7 +13,6 @@ import logging
 from StringIO import StringIO
 from urlparse import urlparse
 from BeautifulSoup import BeautifulSoup
-from threading import Thread
 
 class SaveHtml():
     def __init__(self, dbfile):
@@ -41,52 +42,45 @@ class SaveHtml():
     def close(self):
         self.conn.close()
 
-class WorkerGetHtml(Thread):
-    def __init__(self, queueUrl, queueHtml, dbfile, deep):
-        Thread.__init__(self)
-        self.queueUrl = queueUrl
-        self.queueHtml = queueHtml
+class GetHtml(threading.Thread):
+    def __init__(self, queue_url, dbfile, deep):
+        threading.Thread.__init__(self)
+        self.queue_url = queue_url
+        self.dbfile = dbfile
         self.deep = deep
         self.save_html = SaveHtml(dbfile)
 
     def run(self):
         while True:
-            url = self.queueUrl.get()
-            logging.debug("[get] {0} {1}".format(url[0], url[1]))
-            response = urllib2.urlopen(url[1], timeout=5)
+            try:
+                url = self.queue_url.get()
 
-            if response.info().get('Content-Encoding') == 'gzip':
-                buf = StringIO(response.read())
-                f = gzip.GzipFile(fileobj=buf)
-                html = f.read()
-            else:
-                html = response.read()
-            
-            if(url[0] <= self.deep):
+                logging.debug("{0} queue size {1}".format(self.getName(),
+                    self.queue_url.qsize()))
+
+                response = urllib2.urlopen(url[1], timeout=5)
+
+                if response.info().get('Content-Encoding') == 'gzip':
+                    buf = StringIO(response.read())
+                    f = gzip.GzipFile(fileobj=buf)
+                    html = f.read()
+                else:
+                    html = response.read()
+
+                if url[0] < 1:
+                    soup = BeautifulSoup(html)
+                    for link in soup.findAll('a',
+                            attrs={'href': re.compile("^http://")}):
+                        href = link.get('href')
+                        logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
+                        self.queue_url.put([url[0]+1, href])
                 self.save_html.save(url[0], url[1], html)
-                self.queueHtml.put([url[0], html])
+                logging.debug("{0} downloaded {1}".format(self.getName(), url[1].encode("utf8")))
+            except:
+                logging.error("Unexpected error:", sys.exc_info()[0])
 
-            self.queueUrl.task_done()
+            self.queue_url.task_done()
 
-class WorkerParserHtml(Thread):
-    def __init__(self, queueHtml, queueUrl):
-        Thread.__init__(self)
-        self.queueHtml = queueHtml
-        self.queueUrl = queueUrl
-
-    def run(self):
-        while True:
-            html = self.queueHtml.get()
-            deep = html[0] + 1
-            soup = BeautifulSoup(html[1])
-            count = 0
-            for link in soup.findAll('a', attrs={'href': re.compile("^http://")}):
-                href = link.get('href')
-                count = count + 1
-                self.queueUrl.put([deep, href])
-                logging.debug("[href] {0} {1}".format(deep, href))
-            print count
-            self.queueHtml.task_done()
 
 def main():
 
@@ -111,20 +105,15 @@ def main():
     level = LEVELS[args.loglevel]
     logging.basicConfig(filename=args.logfile,level=level)
 
-    queueUrl = Queue.Queue()
-    queueUrl.put([0, args.url])
-    queueHtml = Queue.Queue()
+    queue_url = Queue.Queue()
+    queue_url.put([0, args.url])
 
-    t = WorkerGetHtml(queueUrl, queueHtml, args.dbfile, args.deep)
-    t.setDaemon(True)
-    t.start()
+    for i in range(2):
+        thread_job = GetHtml(queue_url, args.dbfile, args.deep)
+        thread_job.setDaemon(True)
+        thread_job.start()
 
-    t1 = WorkerParserHtml(queueHtml, queueUrl)
-    t1.setDaemon(True)
-    t1.start()
-
-    queueUrl.join()
-    queueHtml.join()
+    queue_url.join()
 
 if __name__ == "__main__":
     main()
