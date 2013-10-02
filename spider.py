@@ -11,6 +11,7 @@ import gzip
 import re
 import md5
 import sqlite3
+import time
 from StringIO import StringIO
 from urlparse import urlparse
 from BeautifulSoup import BeautifulSoup
@@ -38,41 +39,41 @@ class SaveHtml():
         try:
             self.cmd.execute("insert into data (url, url_hash, deep, html) values (?,?,?,?)", (url, url_hash, deep, html))
             self.conn.commit()
-        except Exception,e:
-            print e
+        except Exception as e:
+            logging.error("Unexpected error:{0}".format(str(e)))
 
     def close(self):
         self.conn.close()
 
 class GetHtml(threading.Thread):
-    def __init__(self, queue_url, dict_url, dbfile, deep):
+    def __init__(self, queue_url, dict_url, db, deep):
         threading.Thread.__init__(self)
         self.queue_url = queue_url
         self.dict_url = dict_url 
-        self.dbfile = dbfile
+        self.db = db
         self.deep = deep
-        self.save_html = SaveHtml(dbfile)
 
     def run(self):
         while True:
             url = self.queue_url.get()
             url_hash = md5.new(url[1]).hexdigest()
-            logging.debug("{0} queue size {1}".format(self.getName(),
-                self.queue_url.qsize()))
-
             if not self.dict_url.has_key(url_hash):
-                self.dict_url[url_hash] = url[1]
                 try:
-                    response = urllib2.urlopen(url[1], timeout=5)
+                    response = urllib2.urlopen(url[1], timeout=20)
                     if response.info().get('Content-Encoding') == 'gzip':
                         buf = StringIO(response.read())
                         f = gzip.GzipFile(fileobj=buf)
                         html = f.read()
                     else:
                         html = response.read()
-                except:
-                    logging.error("Unexpected error:", sys.exc_info()[0])
+                except urllib2.URLError as e:
+                    logging.error("URLError:{0} {1}".format(url[1], e.reason))
+                except urllib2.HTTPError as e:
+                    logging.error("HTTPError:{0} {1}".format(url[1], e.code))
+                except Exception as e:
+                    logging.error("Unexpected:{0} {1}".format(url[1], str(e)))
                 else:
+                    self.dict_url[url_hash] = url[1]
                     if url[0] < self.deep:
                         soup = BeautifulSoup(html)
                         for link in soup.findAll('a',
@@ -81,13 +82,27 @@ class GetHtml(threading.Thread):
                             self.queue_url.put([url[0]+1, href])
                             logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
 
-                    self.save_html.save(url[1], url_hash, url[0], html)
+                    self.db.save(url[1], url_hash, url[0], html)
                     logging.debug("{0} downloaded {1}".format(self.getName(), url[1].encode("utf8")))
 
             self.queue_url.task_done()
 
+class PrintLog(threading.Thread):
+    def __init__(self, queue_url, dict_url):
+        threading.Thread.__init__(self)
+        self.queue_url = queue_url
+        self.dict_url = dict_url 
+
+    def run(self):
+        while True:
+            time.sleep(1)
+            queue = self.queue_url.qsize()
+            downloaded = len(self.dict_url)
+            total = queue + downloaded
+            print "queue:{0} downloaded:{1} total:{2}".format(queue, downloaded, total)
 
 def main():
+    start = time.time()
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', dest="url", default="http://www.sina.com.cn", help="")
@@ -110,18 +125,24 @@ def main():
     level = LEVELS[args.loglevel]
     logging.basicConfig(filename=args.logfile,level=level)
 
+    db = SaveHtml(args.dbfile)
+
     queue_url = Queue.Queue()
     queue_url.put([0, args.url])
 
     dict_url = {}
 
     for i in range(args.thread):
-        thread_job = GetHtml(queue_url, dict_url, args.dbfile, args.deep)
+        thread_job = GetHtml(queue_url, dict_url, db, args.deep)
         thread_job.setDaemon(True)
         thread_job.start()
 
+    thread_log = PrintLog(queue_url, dict_url)
+    thread_log.setDaemon(True)
+    thread_log.start()
+
     queue_url.join()
-    print len(dict_url)
+    print "downloaded: {0} Elapsed Time: {1}".format(len(dict_url), time.time()-start)
 
 if __name__ == "__main__":
     main()
