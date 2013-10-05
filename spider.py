@@ -46,60 +46,59 @@ class SaveHtml():
         self.conn.close()
 
 class GetHtml(threading.Thread):
-    def __init__(self, queue_url, dict_url, db, deep):
+    def __init__(self, queue_url, dict_downloaded, db, deep):
         threading.Thread.__init__(self)
         self.queue_url = queue_url
-        self.dict_url = dict_url 
+        self.dict_downloaded = dict_downloaded 
         self.db = db
         self.deep = deep
 
     def run(self):
         while True:
             url = self.queue_url.get()
-            url_hash = md5.new(url[1]).hexdigest()
-            if not self.dict_url.has_key(url_hash):
-                try:
-                    response = urllib2.urlopen(url[1], timeout=20)
-                    if response.info().get('Content-Encoding') == 'gzip':
-                        buf = StringIO(response.read())
-                        f = gzip.GzipFile(fileobj=buf)
-                        html = f.read()
-                    else:
-                        html = response.read()
-                except urllib2.URLError as e:
-                    logging.error("URLError:{0} {1}".format(url[1], e.reason))
-                except urllib2.HTTPError as e:
-                    logging.error("HTTPError:{0} {1}".format(url[1], e.code))
-                except Exception as e:
-                    logging.error("Unexpected:{0} {1}".format(url[1], str(e)))
+            try:
+                response = urllib2.urlopen(url[1], timeout=20)
+                if response.info().get('Content-Encoding') == 'gzip':
+                    buf = StringIO(response.read())
+                    f = gzip.GzipFile(fileobj=buf)
+                    html = f.read()
                 else:
-                    self.dict_url[url_hash] = url[1]
-                    if url[0] < self.deep:
-                        soup = BeautifulSoup(html)
-                        for link in soup.findAll('a',
-                                attrs={'href': re.compile("^http://")}):
-                            href = link.get('href')
-                            self.queue_url.put([url[0]+1, href])
+                    html = response.read()
+            except urllib2.URLError as e:
+                logging.error("URLError:{0} {1}".format(url[1], e.reason))
+            except urllib2.HTTPError as e:
+                logging.error("HTTPError:{0} {1}".format(url[1], e.code))
+            except Exception as e:
+                logging.error("Unexpected:{0} {1}".format(url[1], str(e)))
+            else:
+                if url[0] < self.deep:
+                    soup = BeautifulSoup(html)
+                    for link in soup.findAll('a',
+                            attrs={'href': re.compile("^http://")}):
+                        href = link.get('href')
+                        url_hash = md5.new(href).hexdigest()
+                        if not self.dict_downloaded.has_key(url_hash):
+                            self.queue_url.put([url[0]+1, href, url_hash])
                             logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
 
-                    self.db.save(url[1], url_hash, url[0], html)
-                    logging.debug("{0} downloaded {1}".format(self.getName(), url[1].encode("utf8")))
+                self.db.save(url[1], url[2], url[0], html)
+                self.dict_downloaded[url[2]] = url[1]
+                logging.debug("{0} downloaded {1}".format(self.getName(), url[1].encode("utf8")))
 
             self.queue_url.task_done()
 
 class PrintLog(threading.Thread):
-    def __init__(self, queue_url, dict_url):
+    def __init__(self, queue_url, dict_downloaded):
         threading.Thread.__init__(self)
         self.queue_url = queue_url
-        self.dict_url = dict_url 
+        self.dict_downloaded = dict_downloaded 
 
     def run(self):
         while True:
             time.sleep(1)
             queue = self.queue_url.qsize()
-            downloaded = len(self.dict_url)
-            total = queue + downloaded
-            print "queue:{0} downloaded:{1} total:{2}".format(queue, downloaded, total)
+            downloaded = len(self.dict_downloaded)
+            print "queue:{0} downloaded:{1}".format(queue, downloaded)
 
 def main():
     start = time.time()
@@ -128,21 +127,21 @@ def main():
     db = SaveHtml(args.dbfile)
 
     queue_url = Queue.Queue()
-    queue_url.put([0, args.url])
+    queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
 
-    dict_url = {}
+    dict_downloaded = {}
 
     for i in range(args.thread):
-        thread_job = GetHtml(queue_url, dict_url, db, args.deep)
+        thread_job = GetHtml(queue_url, dict_downloaded, db, args.deep)
         thread_job.setDaemon(True)
         thread_job.start()
 
-    thread_log = PrintLog(queue_url, dict_url)
+    thread_log = PrintLog(queue_url, dict_downloaded)
     thread_log.setDaemon(True)
     thread_log.start()
 
     queue_url.join()
-    print "downloaded: {0} Elapsed Time: {1}".format(len(dict_url), time.time()-start)
+    print "downloaded: {0} Elapsed Time: {1}".format(len(dict_downloaded), time.time()-start)
 
 if __name__ == "__main__":
     main()
