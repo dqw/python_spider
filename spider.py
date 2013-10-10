@@ -104,15 +104,28 @@ def main():
     start = time.time()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-u', dest="url", default="http://www.sina.com.cn", help="")
-    parser.add_argument("-d", type=int, dest="deep", default=1, help="")  
+    parser.add_argument('-u', dest="url", default="http://www.baidu.com.cn", help="")
+    parser.add_argument("-d", type=int, dest="deep", default=0, help="")  
     parser.add_argument("--thread", type=int, dest="thread", default=10, help="")  
     parser.add_argument('--dbfile', dest="dbfile", default="page.db", help="")
     parser.add_argument('--key', dest="key", default="", help="")
     parser.add_argument('-f', dest="logfile", default="spider.log", help="")
     parser.add_argument('-l', dest="loglevel", default="5", type=int, help="")
-    parser.add_argument('--testself', dest="key", default="", help="")
+    parser.add_argument('--testself', action="store_true", dest="testself", default="", help="")
     args = parser.parse_args()
+
+    if args.testself:
+        url = "http://www.sina.com.cn"
+        dbfile = "testself.db"
+        logfile = "testself.log"
+        deep = 0
+        thread = 1
+    else:
+        url = args.url
+        dbfile = args.dbfile
+        logfile = args.logfile
+        deep = args.deep
+        thread = args.thread
 
     LEVELS = {
         1:logging.CRITICAL,
@@ -122,17 +135,17 @@ def main():
         5:logging.DEBUG
     }
     level = LEVELS[args.loglevel]
-    logging.basicConfig(filename=args.logfile,level=level)
+    logging.basicConfig(filename=logfile,level=level)
 
-    db = SaveHtml(args.dbfile)
+    db = SaveHtml(dbfile)
 
     queue_url = Queue.Queue()
-    queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
+    queue_url.put([0, url, md5.new(url).hexdigest()])
 
     dict_downloaded = {}
 
-    for i in range(args.thread):
-        thread_job = GetHtml(queue_url, dict_downloaded, db, args.deep)
+    for i in range(thread):
+        thread_job = GetHtml(queue_url, dict_downloaded, db, deep)
         thread_job.setDaemon(True)
         thread_job.start()
 
