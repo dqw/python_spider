@@ -100,33 +100,43 @@ class PrintLog(threading.Thread):
             downloaded = len(self.dict_downloaded)
             print "queue:{0} downloaded:{1}".format(queue, downloaded)
 
-def main():
+# 测试网络连接
+def test_network(url):
+    """
+    测试网络是否通常，返回200为测试通过
+    >>> test_network("http://www.baidu.com")
+    200
+    """
+
+    try:
+        response = urllib2.urlopen(url)
+    except urllib2.HTTPError as e:
+        return e.code
+    except Exception as e:
+        return str(e)
+    else:
+        return response.getcode()
+
+# 测试sqlite连接
+def test_sqlite(dbfile):
+    """
+    测试是否可以创建并连接sqlite数据库文件，返回True为测试通过 
+    >>> test_sqlite("test.db")
+    True
+    """
+
+    try:
+        conn = sqlite3.connect(dbfile)
+    except Exception as e:
+        return str(e)
+    else:
+        conn.close()
+        return True
+
+def main(url, deep, thread, dbfile, logfile, loglevel):
     start = time.time()
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-u', dest="url", default="http://www.baidu.com.cn", help="")
-    parser.add_argument("-d", type=int, dest="deep", default=0, help="")  
-    parser.add_argument("--thread", type=int, dest="thread", default=10, help="")  
-    parser.add_argument('--dbfile', dest="dbfile", default="page.db", help="")
-    parser.add_argument('--key', dest="key", default="", help="")
-    parser.add_argument('-f', dest="logfile", default="spider.log", help="")
-    parser.add_argument('-l', dest="loglevel", default="5", type=int, help="")
-    parser.add_argument('--testself', action="store_true", dest="testself", default="", help="")
-    args = parser.parse_args()
-
-    if args.testself:
-        url = "http://www.sina.com.cn"
-        dbfile = "testself.db"
-        logfile = "testself.log"
-        deep = 0
-        thread = 1
-    else:
-        url = args.url
-        dbfile = args.dbfile
-        logfile = args.logfile
-        deep = args.deep
-        thread = args.thread
-
+    # logging初始化，设定日志文件名和记录级别
     LEVELS = {
         1:logging.CRITICAL,
         2:logging.ERROR,
@@ -134,8 +144,8 @@ def main():
         4:logging.INFO,
         5:logging.DEBUG
     }
-    level = LEVELS[args.loglevel]
-    logging.basicConfig(filename=logfile,level=level)
+    level = LEVELS[loglevel]
+    logging.basicConfig(filename=logfile, level=level)
 
     db = SaveHtml(dbfile)
 
@@ -154,7 +164,26 @@ def main():
     thread_log.start()
 
     queue_url.join()
+    db.close()
     print "downloaded: {0} Elapsed Time: {1}".format(len(dict_downloaded), time.time()-start)
 
 if __name__ == "__main__":
-    main()
+
+    # 参数处理
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-u', dest="url", default="http://www.baidu.com.cn", help="")
+    parser.add_argument("-d", type=int, dest="deep", default=0, help="")  
+    parser.add_argument("--thread", type=int, dest="thread", default=10, help="")  
+    parser.add_argument('--dbfile', dest="dbfile", default="page.db", help="")
+    parser.add_argument('-f', dest="logfile", default="spider.log", help="")
+    parser.add_argument('-l', dest="loglevel", default="5", type=int, help="")
+    parser.add_argument('--key', dest="key", default="", help="")
+    parser.add_argument('--testself', action="store_true", dest="testself", default="", help="")
+    args = parser.parse_args()
+
+    if args.testself:
+        # 使用doctest进行测试
+        import doctest
+        doctest.testmod(verbose=True)
+    else:
+        main(args.url, args.deep, args.thread, args.dbfile, args.logfile, args.loglevel)
