@@ -46,12 +46,13 @@ class SaveHtml():
         self.conn.close()
 
 class GetHtml(threading.Thread):
-    def __init__(self, queue_url, dict_downloaded, db, deep):
+    def __init__(self, queue_url, dict_downloaded, db, deep, key):
         threading.Thread.__init__(self)
         self.queue_url = queue_url
         self.dict_downloaded = dict_downloaded 
         self.db = db
         self.deep = deep
+        self.key = key
 
     def run(self):
         while True:
@@ -71,21 +72,35 @@ class GetHtml(threading.Thread):
             except Exception as e:
                 logging.error("Unexpected:{0} {1}".format(url[1], str(e)))
             else:
-                if url[0] < self.deep:
+                if self.key == "":
+                    self.getLink(url, html)
+                    self.saveHtml(url, html)
+                else:
                     soup = BeautifulSoup(html)
-                    for link in soup.findAll('a',
-                            attrs={'href': re.compile("^http://")}):
-                        href = link.get('href')
-                        url_hash = md5.new(href).hexdigest()
-                        if not self.dict_downloaded.has_key(url_hash):
-                            self.queue_url.put([url[0]+1, href, url_hash])
-                            logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
-
-                self.db.save(url[1], url[2], url[0], html)
-                self.dict_downloaded[url[2]] = url[1]
-                logging.debug("{0} downloaded {1}".format(self.getName(), url[1].encode("utf8")))
+                    if soup.findAll('meta', content=re.compile(self.key)):
+                        self.getLink(url, html, soup)
+                        self.saveHtml(url, html)
+                    else:
+                        logging.debug("{0} ignore {1} key not match".format(self.getName(), url[1].encode("utf8")))
 
             self.queue_url.task_done()
+
+    def getLink(self, url, html, soup = None):
+        if url[0] < self.deep:
+            if not soup:
+                soup = BeautifulSoup(html)
+            for link in soup.findAll('a',
+                    attrs={'href': re.compile("^http://")}):
+                href = link.get('href')
+                url_hash = md5.new(href).hexdigest()
+                if not self.dict_downloaded.has_key(url_hash):
+                    self.queue_url.put([url[0]+1, href, url_hash])
+                    logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
+
+    def saveHtml(self, url, html):
+        self.db.save(url[1], url[2], url[0], html)
+        self.dict_downloaded[url[2]] = url[1]
+        logging.debug("{0} downloaded {1}".format(self.getName(), url[1].encode("utf8")))
 
 class PrintLog(threading.Thread):
     def __init__(self, queue_url, dict_downloaded):
@@ -133,7 +148,7 @@ def test_sqlite(dbfile):
         conn.close()
         return True
 
-def main(url, deep, thread, dbfile, logfile, loglevel):
+def main(url, deep, thread, dbfile, logfile, loglevel, key):
     start = time.time()
 
     # logging初始化，设定日志文件名和记录级别
@@ -155,7 +170,7 @@ def main(url, deep, thread, dbfile, logfile, loglevel):
     dict_downloaded = {}
 
     for i in range(thread):
-        thread_job = GetHtml(queue_url, dict_downloaded, db, deep)
+        thread_job = GetHtml(queue_url, dict_downloaded, db, deep, key)
         thread_job.setDaemon(True)
         thread_job.start()
 
@@ -186,4 +201,4 @@ if __name__ == "__main__":
         import doctest
         doctest.testmod(verbose=True)
     else:
-        main(args.url, args.deep, args.thread, args.dbfile, args.logfile, args.loglevel)
+        main(args.url, args.deep, args.thread, args.dbfile, args.logfile, args.loglevel, args.key)
