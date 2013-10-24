@@ -76,7 +76,7 @@ class GetHtml(threading.Thread):
                     self.getLink(url, html)
                     self.saveHtml(url, html)
                 else:
-                    soup = BeautifulSoup(html)
+                    soup = BeautifulSoup(html.decode("gb2312", "ignore"))
                     if soup.findAll('meta', content=re.compile(self.key)):
                         self.getLink(url, html, soup)
                         self.saveHtml(url, html)
@@ -201,4 +201,5 @@ if __name__ == "__main__":
         import doctest
         doctest.testmod(verbose=True)
     else:
+        args.key = args.key.decode("utf-8")
         main(args.url, args.deep, args.thread, args.dbfile, args.logfile, args.loglevel, args.key)
