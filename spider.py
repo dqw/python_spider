@@ -12,6 +12,7 @@ import re
 import md5
 import sqlite3
 import time
+import chardet
 from StringIO import StringIO
 from urlparse import urlparse
 from BeautifulSoup import BeautifulSoup
@@ -76,7 +77,9 @@ class GetHtml(threading.Thread):
                     self.getLink(url, html)
                     self.saveHtml(url, html)
                 else:
-                    soup = BeautifulSoup(html.decode("gb2312", "ignore"))
+                    charset = chardet.detect(html)
+                    soup = BeautifulSoup(html.decode(charset['encoding'], "ignore"))
+
                     if soup.findAll('meta', content=re.compile(self.key)):
                         self.getLink(url, html, soup)
                         self.saveHtml(url, html)
