@@ -47,13 +47,14 @@ class SaveHtml():
         self.conn.close()
 
 class GetHtml(threading.Thread):
-    def __init__(self, queue_url, dict_downloaded, db, deep, key):
+    def __init__(self, queue_url, dict_downloaded, db, deep, key, encoding):
         threading.Thread.__init__(self)
         self.queue_url = queue_url
         self.dict_downloaded = dict_downloaded 
         self.db = db
         self.deep = deep
         self.key = key
+        self.encoding = encoding
 
     def run(self):
         while True:
@@ -77,18 +78,20 @@ class GetHtml(threading.Thread):
                     self.getLink(url, html)
                     self.saveHtml(url, html)
                 else:
-                    charset = chardet.detect(html)
-                    soup = BeautifulSoup(html.decode(charset['encoding'], "ignore"))
+                    if not self.encoding:
+                        charset = chardet.detect(html)
+                        self.encoding = charset['encoding']
 
-                    if soup.findAll('meta', content=re.compile(self.key)):
-                        self.getLink(url, html, soup)
+                    match = re.search(re.compile(self.key), html.decode(self.encoding, "ignore"))
+                    if match:
+                        self.getLink(url, html)
                         self.saveHtml(url, html)
                     else:
                         logging.debug("{0} ignore {1} key not match".format(self.getName(), url[1].encode("utf8")))
 
             self.queue_url.task_done()
 
-    def getLink(self, url, html, soup = None):
+    def getLink(self, url, html):
         if url[0] < self.deep:
             if not soup:
                 soup = BeautifulSoup(html)
@@ -151,7 +154,7 @@ def test_sqlite(dbfile):
         conn.close()
         return True
 
-def main(url, deep, thread, dbfile, logfile, loglevel, key):
+def main(url, deep, thread, dbfile, logfile, loglevel, key, encoding):
     start = time.time()
 
     # logging初始化，设定日志文件名和记录级别
@@ -173,7 +176,7 @@ def main(url, deep, thread, dbfile, logfile, loglevel, key):
     dict_downloaded = {}
 
     for i in range(thread):
-        thread_job = GetHtml(queue_url, dict_downloaded, db, deep, key)
+        thread_job = GetHtml(queue_url, dict_downloaded, db, deep, key, encoding)
         thread_job.setDaemon(True)
         thread_job.start()
 
@@ -196,6 +199,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', dest="logfile", default="spider.log", help="")
     parser.add_argument('-l', dest="loglevel", default="5", type=int, help="")
     parser.add_argument('--key', dest="key", default="", help="")
+    parser.add_argument('--encoding', dest="encoding", default=None, help="")
     parser.add_argument('--testself', action="store_true", dest="testself", default="", help="")
     args = parser.parse_args()
 
@@ -205,4 +209,4 @@ if __name__ == "__main__":
         doctest.testmod(verbose=True)
     else:
         args.key = args.key.decode("utf-8")
-        main(args.url, args.deep, args.thread, args.dbfile, args.logfile, args.loglevel, args.key)
+        main(args.url, args.deep, args.thread, args.dbfile, args.logfile, args.loglevel, args.key, args.encoding)
