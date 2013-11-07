@@ -55,9 +55,11 @@ class GetHtml(threading.Thread):
         self.deep = deep
         self.key = key
         self.encoding = encoding
+        self.setDaemon(True)
+        self.start()
 
     def run(self):
-        while True:
+        while not self.queue_url.empty():
             url = self.queue_url.get()
             try:
                 response = urllib2.urlopen(url[1], timeout=20)
@@ -93,8 +95,7 @@ class GetHtml(threading.Thread):
 
     def getLink(self, url, html):
         if url[0] < self.deep:
-            if not soup:
-                soup = BeautifulSoup(html)
+            soup = BeautifulSoup(html)
             for link in soup.findAll('a',
                     attrs={'href': re.compile("^http://")}):
                 href = link.get('href')
@@ -120,6 +121,29 @@ class PrintLog(threading.Thread):
             queue = self.queue_url.qsize()
             downloaded = len(self.dict_downloaded)
             print "queue:{0} downloaded:{1}".format(queue, downloaded)
+
+class WorkManager(object):
+    def __init__(self, thread, queue_url, dict_downloaded, db, deep, key, encoding):
+        self.threads = []
+        self.queue_url = queue_url
+        self.dict_downloaded = dict_downloaded 
+        self.db = db 
+        self.deep = deep 
+        self.key = key
+        self.encoding = encoding
+        self.__init_thread_pool(thread)
+
+    def __init_thread_pool(self, thread):
+        for i in range(thread):
+            self.threads.append(GetHtml(self.queue_url, self.dict_downloaded, self.db, self.deep, self.key, self.encoding))
+
+    def check_queue(self):
+        return self.queue_url.qsize()
+
+    def wait_allcomplete(self):
+        for item in self.threads:
+            if item.isAlive():item.join()
+
 
 # 测试网络连接
 def test_network(url):
@@ -175,16 +199,13 @@ def main(url, deep, thread, dbfile, logfile, loglevel, key, encoding):
 
     dict_downloaded = {}
 
-    for i in range(thread):
-        thread_job = GetHtml(queue_url, dict_downloaded, db, deep, key, encoding)
-        thread_job.setDaemon(True)
-        thread_job.start()
-
     thread_log = PrintLog(queue_url, dict_downloaded)
     thread_log.setDaemon(True)
     thread_log.start()
 
-    queue_url.join()
+    work_manager = WorkManager(thread, queue_url, dict_downloaded, db, deep, key, encoding)
+    work_manager.wait_allcomplete()
+
     db.close()
     print "downloaded: {0} Elapsed Time: {1}".format(len(dict_downloaded), time.time()-start)
 
@@ -194,7 +215,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', dest="url", default="http://www.baidu.com.cn", help="")
     parser.add_argument("-d", type=int, dest="deep", default=0, help="")  
-    parser.add_argument("--thread", type=int, dest="thread", default=10, help="")  
+    parser.add_argument("--thread", type=int, dest="thread", default=1, help="")  
     parser.add_argument('--dbfile', dest="dbfile", default="page.db", help="")
     parser.add_argument('-f', dest="logfile", default="spider.log", help="")
     parser.add_argument('-l', dest="loglevel", default="5", type=int, help="")
