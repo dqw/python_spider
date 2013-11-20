@@ -2,20 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import argparse
 import threading
+import argparse
 import Queue
 import logging
 import urllib2
-import gzip
-import re
 import md5
+import gzip
 import sqlite3
 import time
 import chardet
 from StringIO import StringIO
 from urlparse import urlparse
-from BeautifulSoup import BeautifulSoup
+from utils.pool import WorkManager
 
 class SaveHtml():
     def __init__(self, dbfile):
@@ -46,69 +45,6 @@ class SaveHtml():
     def close(self):
         self.conn.close()
 
-class GetHtml(threading.Thread):
-    def __init__(self, queue_url, dict_downloaded, db, deep, key, encoding):
-        threading.Thread.__init__(self)
-        self.queue_url = queue_url
-        self.dict_downloaded = dict_downloaded 
-        self.db = db
-        self.deep = deep
-        self.key = key
-        self.encoding = encoding
-        self.setDaemon(True)
-        self.start()
-
-    def run(self):
-        while not self.queue_url.empty():
-            url = self.queue_url.get()
-            try:
-                response = urllib2.urlopen(url[1], timeout=20)
-                if response.info().get('Content-Encoding') == 'gzip':
-                    buf = StringIO(response.read())
-                    f = gzip.GzipFile(fileobj=buf)
-                    html = f.read()
-                else:
-                    html = response.read()
-            except urllib2.URLError as e:
-                logging.error("URLError:{0} {1}".format(url[1], e.reason))
-            except urllib2.HTTPError as e:
-                logging.error("HTTPError:{0} {1}".format(url[1], e.code))
-            except Exception as e:
-                logging.error("Unexpected:{0} {1}".format(url[1], str(e)))
-            else:
-                if self.key == "":
-                    self.getLink(url, html)
-                    self.saveHtml(url, html)
-                else:
-                    if not self.encoding:
-                        charset = chardet.detect(html)
-                        self.encoding = charset['encoding']
-
-                    match = re.search(re.compile(self.key), html.decode(self.encoding, "ignore"))
-                    if match:
-                        self.getLink(url, html)
-                        self.saveHtml(url, html)
-                    else:
-                        logging.debug("{0} ignore {1} key not match".format(self.getName(), url[1].encode("utf8")))
-
-            self.queue_url.task_done()
-
-    def getLink(self, url, html):
-        if url[0] < self.deep:
-            soup = BeautifulSoup(html)
-            for link in soup.findAll('a',
-                    attrs={'href': re.compile("^http://")}):
-                href = link.get('href')
-                url_hash = md5.new(href).hexdigest()
-                if not self.dict_downloaded.has_key(url_hash):
-                    self.queue_url.put([url[0]+1, href, url_hash])
-                    logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
-
-    def saveHtml(self, url, html):
-        self.db.save(url[1], url[2], url[0], html)
-        self.dict_downloaded[url[2]] = url[1]
-        logging.debug("{0} downloaded {1}".format(self.getName(), url[1].encode("utf8")))
-
 class PrintLog(threading.Thread):
     def __init__(self, queue_url, dict_downloaded):
         threading.Thread.__init__(self)
@@ -121,29 +57,6 @@ class PrintLog(threading.Thread):
             queue = self.queue_url.qsize()
             downloaded = len(self.dict_downloaded)
             print "queue:{0} downloaded:{1}".format(queue, downloaded)
-
-class WorkManager(object):
-    def __init__(self, thread, queue_url, dict_downloaded, db, deep, key, encoding):
-        self.threads = []
-        self.queue_url = queue_url
-        self.dict_downloaded = dict_downloaded 
-        self.db = db 
-        self.deep = deep 
-        self.key = key
-        self.encoding = encoding
-        self.__init_thread_pool(thread)
-
-    def __init_thread_pool(self, thread):
-        for i in range(thread):
-            self.threads.append(GetHtml(self.queue_url, self.dict_downloaded, self.db, self.deep, self.key, self.encoding))
-
-    def check_queue(self):
-        return self.queue_url.qsize()
-
-    def wait_allcomplete(self):
-        for item in self.threads:
-            if item.isAlive():item.join()
-
 
 # 测试网络连接
 def test_network(url):
@@ -178,7 +91,7 @@ def test_sqlite(dbfile):
         conn.close()
         return True
 
-def main(url, deep, thread, dbfile, logfile, loglevel, key, encoding):
+def main(args):
     start = time.time()
 
     # logging初始化，设定日志文件名和记录级别
@@ -189,13 +102,13 @@ def main(url, deep, thread, dbfile, logfile, loglevel, key, encoding):
         4:logging.INFO,
         5:logging.DEBUG
     }
-    level = LEVELS[loglevel]
-    logging.basicConfig(filename=logfile, level=level)
+    level = LEVELS[args.loglevel]
+    logging.basicConfig(filename=args.logfile, level=level)
 
-    db = SaveHtml(dbfile)
+    db = SaveHtml(args.dbfile)
 
     queue_url = Queue.Queue()
-    queue_url.put([0, url, md5.new(url).hexdigest()])
+    queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
 
     dict_downloaded = {}
 
@@ -203,7 +116,7 @@ def main(url, deep, thread, dbfile, logfile, loglevel, key, encoding):
     thread_log.setDaemon(True)
     thread_log.start()
 
-    work_manager = WorkManager(thread, queue_url, dict_downloaded, db, deep, key, encoding)
+    work_manager = WorkManager(args, queue_url, dict_downloaded, db, logging)
     work_manager.wait_allcomplete()
 
     db.close()
@@ -230,4 +143,4 @@ if __name__ == "__main__":
         doctest.testmod(verbose=True)
     else:
         args.key = args.key.decode("utf-8")
-        main(args.url, args.deep, args.thread, args.dbfile, args.logfile, args.loglevel, args.key, args.encoding)
+        main(args)
