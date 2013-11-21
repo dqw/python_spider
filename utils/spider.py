@@ -4,7 +4,10 @@
 import threading
 import urllib2
 import re
+import gzip
+import chardet
 import md5
+from StringIO import StringIO
 from BeautifulSoup import BeautifulSoup
 
 class GetHtml(threading.Thread):
