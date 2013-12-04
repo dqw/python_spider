@@ -8,9 +8,10 @@ import md5
 import sqlite3
 import time
 from utils.parser import get_args
-from utils.pool import WorkManager
-from utils.save import SaveToSqlite
 from utils.log import PrintLog
+from utils.save import SaveToSqlite
+from utils.spider import GetHtml
+from utils.pool import WorkManager
 
 # 测试网络连接
 def test_network(url):
@@ -79,7 +80,8 @@ if __name__ == "__main__":
         thread_log.setDaemon(True)
         thread_log.start()
 
-        work_manager = WorkManager(args, queue_url, dict_downloaded, db, logging)
+        work = GetHtml(queue_url, dict_downloaded, db, args, logging)
+        work_manager = WorkManager(work, args.thread)
         work_manager.wait_allcomplete()
 
         db.close()
