@@ -20,11 +20,10 @@ class GetHtml(threading.Thread):
         self.key = args.key
         self.encoding = args.encoding
         self.logging = logging
-        self.setDaemon(True)
         self.start()
 
     def run(self):
-        while not self.queue_url.empty():
+        while True:
             url = self.queue_url.get()
             try:
                 response = urllib2.urlopen(url[1], timeout=20)

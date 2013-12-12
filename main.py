@@ -10,7 +10,6 @@ import time
 from utils.parser import get_args
 from utils.log import PrintLog
 from utils.save import SaveToSqlite
-from utils.spider import GetHtml
 from utils.pool import WorkManager
 
 # 测试网络连接
@@ -74,14 +73,20 @@ if __name__ == "__main__":
         queue_url = Queue.Queue()
         queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
 
+        #url1 = "http://www.sina.com.cn"
+        #url2 = "http://www.sohu.com"
+        #url3 = "http://www.163.com"
+        #queue_url.put([0, url1, md5.new(url1).hexdigest()])
+        #queue_url.put([0, url2, md5.new(url2).hexdigest()])
+        #queue_url.put([0, url3, md5.new(url3).hexdigest()])
+
         dict_downloaded = {}
 
         thread_log = PrintLog(queue_url, dict_downloaded)
         thread_log.setDaemon(True)
         thread_log.start()
 
-        work = GetHtml(queue_url, dict_downloaded, db, args, logging)
-        work_manager = WorkManager(work, args.thread)
+        work_manager = WorkManager(queue_url, dict_downloaded, db, args, logging)
         work_manager.wait_allcomplete()
 
         db.close()
