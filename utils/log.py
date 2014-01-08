@@ -12,6 +12,8 @@ class PrintLog(threading.Thread):
 
     def run(self):
         while True:
+            if self.queue_url.empty():
+                break
             time.sleep(1)
             queue = self.queue_url.qsize()
             downloaded = len(self.dict_downloaded)

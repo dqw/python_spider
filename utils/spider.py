@@ -20,6 +20,7 @@ class GetHtml(threading.Thread):
         self.key = args.key
         self.encoding = args.encoding
         self.logging = logging
+        self.daemon = True
         self.start()
 
     def run(self):

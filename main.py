@@ -73,13 +73,6 @@ if __name__ == "__main__":
         queue_url = Queue.Queue()
         queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
 
-        #url1 = "http://www.sina.com.cn"
-        #url2 = "http://www.sohu.com"
-        #url3 = "http://www.163.com"
-        #queue_url.put([0, url1, md5.new(url1).hexdigest()])
-        #queue_url.put([0, url2, md5.new(url2).hexdigest()])
-        #queue_url.put([0, url3, md5.new(url3).hexdigest()])
-
         dict_downloaded = {}
 
         thread_log = PrintLog(queue_url, dict_downloaded)
@@ -87,7 +80,7 @@ if __name__ == "__main__":
         thread_log.start()
 
         work_manager = WorkManager(queue_url, dict_downloaded, db, args, logging)
-        work_manager.wait_allcomplete()
+        queue_url.join()
 
         db.close()
 
