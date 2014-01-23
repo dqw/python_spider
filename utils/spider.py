@@ -35,11 +35,11 @@ class GetHtml(threading.Thread):
                 else:
                     html = response.read()
             except urllib2.URLError as e:
-                self.logging.error("URLError:{0} {1}".format(url[1], e.reason))
+                self.logging.error("URLError:{0} {1}".format(url[1].encode("utf8"), e.reason))
             except urllib2.HTTPError as e:
-                self.logging.error("HTTPError:{0} {1}".format(url[1], e.code))
+                self.logging.error("HTTPError:{0} {1}".format(url[1].encode("utf8"), e.code))
             except Exception as e:
-                self.logging.error("Unexpected:{0} {1}".format(url[1], str(e)))
+                self.logging.error("Unexpected:{0} {1}".format(url[1].encode("utf8"), str(e)))
             else:
                 if self.key == "":
                     self.getLink(url, html)
@@ -64,7 +64,7 @@ class GetHtml(threading.Thread):
             for link in soup.findAll('a',
                     attrs={'href': re.compile("^http://")}):
                 href = link.get('href')
-                url_hash = md5.new(href).hexdigest()
+                url_hash = md5.new(href.encode("utf8")).hexdigest()
                 if not self.dict_downloaded.has_key(url_hash):
                     self.queue_url.put([url[0]+1, href, url_hash])
                     self.logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
