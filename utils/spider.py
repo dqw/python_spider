@@ -42,9 +42,11 @@ class GetHtml(threading.Thread):
                 self.logging.error("Unexpected:{0} {1}".format(url[1].encode("utf8"), str(e)))
             else:
                 if self.key == "":
+                    # 下载所有页面
                     self.getLink(url, html)
                     self.saveHtml(url, html)
                 else:
+                    # 下载匹配关键字的页面
                     if not self.encoding:
                         charset = chardet.detect(html)
                         self.encoding = charset['encoding']
@@ -58,17 +60,20 @@ class GetHtml(threading.Thread):
 
             self.queue_url.task_done()
 
+    # 分析页面，获取链接
     def getLink(self, url, html):
         if url[0] < self.deep:
             soup = BeautifulSoup(html)
             for link in soup.findAll('a',
                     attrs={'href': re.compile("^http://")}):
                 href = link.get('href')
+                # 判断该链接是否已经下载过
                 url_hash = md5.new(href.encode("utf8")).hexdigest()
                 if not self.dict_downloaded.has_key(url_hash):
                     self.queue_url.put([url[0]+1, href, url_hash])
                     self.logging.debug("{0} add href {1} to queue".format(self.getName(), href.encode("utf8")))
 
+    # 保存下载的页面
     def saveHtml(self, url, html):
         self.db.save(url[1], url[2], url[0], html)
         self.dict_downloaded[url[2]] = url[1]
