@@ -9,8 +9,8 @@ import sqlite3
 import time
 from utils.parser import get_args
 from utils.log import PrintLog
-from utils.save import SaveToSqlite
-from utils.pool import WorkManager
+from utils.pool import ThreadPool
+from utils.spider import GetHtml 
 
 # 测试网络连接
 def test_network(url):
@@ -68,21 +68,12 @@ if __name__ == "__main__":
         level = LEVELS[args.loglevel]
         logging.basicConfig(filename=args.logfile, level=level)
 
-        db = SaveToSqlite(args.dbfile, logging)
-
-        queue_url = Queue.Queue()
         queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
 
-        dict_downloaded = {}
-
-        thread_log = PrintLog(queue_url, dict_downloaded)
-        thread_log.setDaemon(True)
-        thread_log.start()
-
-        work_manager = WorkManager(queue_url, dict_downloaded, db, args, logging)
-        queue_url.join()
-
-        db.close()
+        thread_pool = ThreadPool(3)
+        thread_pool.add_job(GetHtml, args.url)
+        thread_pool.start_job()
+        thread_pool.wait_allcomplete()
 
         print "downloaded: {0} Elapsed Time: {1}".format(len(dict_downloaded), time.time()-start)
 
