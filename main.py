@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import Queue
 import logging
 import urllib2
 import md5
@@ -10,7 +9,7 @@ import time
 from utils.parser import get_args
 from utils.log import PrintLog
 from utils.pool import ThreadPool
-from utils.spider import GetHtml 
+from utils.spider import Spider
 
 # 测试网络连接
 def test_network(url):
@@ -68,12 +67,12 @@ if __name__ == "__main__":
         level = LEVELS[args.loglevel]
         logging.basicConfig(filename=args.logfile, level=level)
 
-        queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
+        #queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
 
-        thread_pool = ThreadPool(3)
-        thread_pool.add_job(GetHtml, args.url)
-        thread_pool.start_job()
+        thread_pool = ThreadPool(3, args)
+        thread_pool.add_task(Spider, args.url)
+        thread_pool.start_task()
         thread_pool.wait_allcomplete()
 
-        print "downloaded: {0} Elapsed Time: {1}".format(len(dict_downloaded), time.time()-start)
+        print "Elapsed Time: {0}".format(time.time()-start)
 

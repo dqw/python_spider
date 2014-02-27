@@ -8,7 +8,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', dest="url", default="http://www.baidu.com.cn", help="")
     parser.add_argument("-d", type=int, dest="deep", default=0, help="")  
-    parser.add_argument("--thread", type=int, dest="thread", default=1, help="")  
+    parser.add_argument("--thread", type=int, dest="thread", default=2, help="")  
     parser.add_argument('--dbfile', dest="dbfile", default="page.db", help="")
     parser.add_argument('-f', dest="logfile", default="spider.log", help="")
     parser.add_argument('-l', dest="loglevel", default="5", type=int, help="")

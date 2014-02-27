@@ -1,9 +1,13 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-class ThreadPool(object):
-    def __init__(self, thread_num=2):
+import threading
+import Queue
 
+class ThreadPool(object):
+    def __init__(self, thread_num, args):
+
+        self.args = args
         self.work_queue = Queue.Queue()
         self.threads = []
         self.running = 0
@@ -13,21 +17,21 @@ class ThreadPool(object):
         for i in range(thread_num):
             self.threads.append(WorkThread(self))
 
-    def add_job(self, func, url):
+    def add_task(self, func, url):
         self.work_queue.put((func, url))
 
     def get_task(self):
         #只使用一个线程,能正常退出
-        job = self.work_queue.get(block=False)
+        task = self.work_queue.get(block=False)
         #多线程但是不退出
-        #job = self.work_queue.get()
+        #task = self.work_queue.get()
 
-        return job
+        return task
 
     def task_done(self):
         self.work_queue.task_done()
 
-    def start_job(self):
+    def start_task(self):
         for item in self.threads:
             item.start()
 
@@ -59,10 +63,11 @@ class WorkThread(threading.Thread):
             try:
                 do, url = self.thread_pool.get_task()
                 self.thread_pool.increase_running()
-                new_jobs = do(url)
-                if new_jobs:
-                    for url in new_jobs:
-                        self.thread_pool.add_job(do, url)
+                print "{0} downloaded {1} \n".format(threading.current_thread(), url)
+                new_task = do(url, self.thread_pool.args)
+                if new_task:
+                    for url in new_task:
+                        self.thread_pool.add_task(do, url)
 
                 self.thread_pool.decrease_running()
                 self.thread_pool.task_done()
