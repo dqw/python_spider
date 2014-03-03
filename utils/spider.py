@@ -12,7 +12,7 @@ from BeautifulSoup import BeautifulSoup
 def spider(url, args):
 
     # 分析页面，获取链接
-    def getLink(html):
+    def get_link(html):
 
         new_task = []
 
@@ -47,7 +47,7 @@ def spider(url, args):
         if args.key == "":
             # 下载所有页面
             if url == 'http://www.baidu.com.cn':
-                new_task = getLink(html)
+                new_task = get_link(html)
         else:
             # 下载匹配关键字的页面
             if not self.encoding:
@@ -56,7 +56,7 @@ def spider(url, args):
 
             match = re.search(re.compile(self.key), html.decode(self.encoding, "ignore"))
             if match:
-                new_task = getLink(url, html)
+                new_task = get_link(url, html)
             else:
                 print 'not match'
                 #self.logging.debug("{0} ignore {1} key not match".format(self.getName(), url[1].encode("utf8")))
