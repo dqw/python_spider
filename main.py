@@ -6,13 +6,13 @@ import urllib2
 import md5
 import sqlite3
 import time
-from utils.parser import get_args
+from utils.parser import getArgs
 from utils.log import PrintLog
 from utils.pool import ThreadPool
-from utils.spider import Spider
+from utils.spider import spider
 
 # 测试网络连接
-def test_network(url):
+def testNetwork(url):
     """
     测试网络是否通常，返回200为测试通过
     >>> test_network("http://www.baidu.com")
@@ -29,7 +29,7 @@ def test_network(url):
         return response.getcode()
 
 # 测试sqlite连接
-def test_sqlite(dbfile):
+def testSqlite(dbfile):
     """
     测试是否可以创建并连接sqlite数据库文件，返回True为测试通过 
     >>> test_sqlite("test.db")
@@ -47,7 +47,7 @@ def test_sqlite(dbfile):
 if __name__ == "__main__":
 
     # 参数处理
-    args = get_args()
+    args = getArgs()
 
     if args.testself:
         # 使用doctest进行测试
@@ -69,10 +69,10 @@ if __name__ == "__main__":
 
         #queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
 
-        thread_pool = ThreadPool(3, args)
-        thread_pool.add_task(Spider, args.url)
-        thread_pool.start_task()
-        thread_pool.wait_allcomplete()
+        thread_pool = ThreadPool(args.thread, args)
+        thread_pool.addTask(spider, args.url)
+        thread_pool.startTask()
+        thread_pool.waitAllComplete()
 
         print "Elapsed Time: {0}".format(time.time()-start)
 

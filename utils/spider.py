@@ -9,7 +9,7 @@ import md5
 from StringIO import StringIO
 from BeautifulSoup import BeautifulSoup
 
-def Spider(url, args):
+def spider(url, args):
 
     # 分析页面，获取链接
     def getLink(html):

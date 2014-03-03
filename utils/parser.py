@@ -3,7 +3,7 @@
 
 import argparse
 
-def get_args():
+def getArgs():
     # 参数处理
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', dest="url", default="http://www.baidu.com.cn", help="")
