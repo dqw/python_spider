@@ -70,7 +70,7 @@ if __name__ == "__main__":
         # queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
 
         thread_pool = ThreadPool(args.thread, args)
-        thread_pool.add_task(spider, args.url)
+        thread_pool.add_task(spider, args.url, 0)
         thread_pool.start_task()
         thread_pool.wait_all_complete()
 

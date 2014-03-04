@@ -17,8 +17,8 @@ class ThreadPool(object):
         for i in range(thread_num):
             self.threads.append(WorkThread(self))
 
-    def add_task(self, func, url):
-        self.work_queue.put((func, url))
+    def add_task(self, func, url, deep):
+        self.work_queue.put((func, url, deep))
 
     def get_task(self):
         #只使用一个线程,能正常退出
@@ -61,13 +61,18 @@ class WorkThread(threading.Thread):
     def run(self):
         while True:
             try:
-                do, url = self.thread_pool.get_task()
+                do, url, deep = self.thread_pool.get_task()
                 self.thread_pool.increase_running()
                 print "{0} downloaded {1} \n".format(threading.current_thread(), url)
-                new_task = do(url, self.thread_pool.args)
+
+                new_link = True
+                if deep >= self.thread_pool.args.deep:
+                    new_link = False
+
+                new_task = do(url, self.thread_pool.args, new_link)
                 if new_task:
                     for url in new_task:
-                        self.thread_pool.add_task(do, url)
+                        self.thread_pool.add_task(do, url, deep + 1)
 
                 self.thread_pool.decrease_running()
                 self.thread_pool.task_done()

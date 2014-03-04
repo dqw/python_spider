@@ -9,11 +9,10 @@ import md5
 from StringIO import StringIO
 from BeautifulSoup import BeautifulSoup
 
-def spider(url, args):
+def spider(url, args, new_link):
 
     # 分析页面，获取链接
     def get_link(html):
-
         new_task = []
 
         soup = BeautifulSoup(html)
@@ -24,45 +23,46 @@ def spider(url, args):
 
         return new_task 
 
-    try:
-        response = urllib2.urlopen(url, timeout=20)
-        if response.info().get('Content-Encoding') == 'gzip':
-            buf = StringIO(response.read())
-            f = gzip.GzipFile(fileobj=buf)
-            html = f.read()
-        else:
-            html = response.read()
-    except urllib2.URLError as e:
-        print 'url error'
-        #self.logging.error("URLError:{0} {1}".format(url[1].encode("utf8"), e.reason))
-    except urllib2.HTTPError as e:
-        print 'http error'
-        #self.logging.error("HTTPError:{0} {1}".format(url[1].encode("utf8"), e.code))
-    except Exception as e:
-        print 'exception'
-        #self.logging.error("Unexpected:{0} {1}".format(url[1].encode("utf8"), str(e)))
-    else:
-        new_task = []
-
-        if args.key == "":
-            # 下载所有页面
-            if url == 'http://www.baidu.com.cn':
-                new_task = get_link(html)
-        else:
-            # 下载匹配关键字的页面
-            if not self.encoding:
-                charset = chardet.detect(html)
-                self.encoding = charset['encoding']
-
-            match = re.search(re.compile(self.key), html.decode(self.encoding, "ignore"))
-            if match:
-                new_task = get_link(url, html)
+    def get_html(url, args, new_link):
+        try:
+            response = urllib2.urlopen(url, timeout=20)
+            if response.info().get('Content-Encoding') == 'gzip':
+                buf = StringIO(response.read())
+                f = gzip.GzipFile(fileobj=buf)
+                html = f.read()
             else:
-                print 'not match'
-                #self.logging.debug("{0} ignore {1} key not match".format(self.getName(), url[1].encode("utf8")))
+                html = response.read()
+        except urllib2.URLError as e:
+            print 'url error'
+            #self.logging.error("URLError:{0} {1}".format(url[1].encode("utf8"), e.reason))
+        except urllib2.HTTPError as e:
+            print 'http error'
+            #self.logging.error("HTTPError:{0} {1}".format(url[1].encode("utf8"), e.code))
+        except Exception as e:
+            print 'exception'
+            #self.logging.error("Unexpected:{0} {1}".format(url[1].encode("utf8"), str(e)))
+        else:
+            new_task = []
 
+            if args.key == "":
+                if new_link:
+                    new_task = get_link(html)
+            else:
+                # 下载匹配关键字的页面
+                if not self.encoding:
+                    charset = chardet.detect(html)
+                    self.encoding = charset['encoding']
 
-        return new_task 
+                match = re.search(re.compile(self.key), html.decode(self.encoding, "ignore"))
+                if match and new_link:
+                    new_task = get_link(html)
+                else:
+                    print 'not match'
+                    #self.logging.debug("{0} ignore {1} key not match".format(self.getName(), url[1].encode("utf8")))
+
+            return new_task 
+
+    return get_html(url, args, new_link)
 
 
 
