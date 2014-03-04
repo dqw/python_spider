@@ -20,6 +20,7 @@ class ThreadPool(object):
             self.threads.append(WorkThread(self))
 
     def add_task(self, func, url, deep):
+        # 记录任务，判断是否已经下载过
         url_hash = md5.new(url.encode("utf8")).hexdigest()
         if not self.tasks.has_key(url_hash):
             self.tasks[url_hash] = url
