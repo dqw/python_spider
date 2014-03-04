@@ -3,6 +3,7 @@
 
 import threading
 import Queue
+import md5
 
 class ThreadPool(object):
     def __init__(self, thread_num, args):
@@ -11,6 +12,7 @@ class ThreadPool(object):
         self.work_queue = Queue.Queue()
         self.threads = []
         self.running = 0
+        self.tasks = {}
         self.__init_thread_pool(thread_num)
 
     def __init_thread_pool(self, thread_num):
@@ -18,7 +20,10 @@ class ThreadPool(object):
             self.threads.append(WorkThread(self))
 
     def add_task(self, func, url, deep):
-        self.work_queue.put((func, url, deep))
+        url_hash = md5.new(url.encode("utf8")).hexdigest()
+        if not self.tasks.has_key(url_hash):
+            self.tasks[url_hash] = url
+            self.work_queue.put((func, url, deep))
 
     def get_task(self):
         #只使用一个线程,能正常退出
