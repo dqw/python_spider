@@ -10,6 +10,7 @@ class ThreadPool(object):
 
         self.args = args
         self.work_queue = Queue.Queue()
+        self.save_queue = Queue.Queue()
         self.threads = []
         self.running = 0
         self.tasks = {}
@@ -50,6 +51,10 @@ class ThreadPool(object):
     def get_running(self):
         return self.running
 
+    def add_save_task(self, url, html):
+        self.save_queue.put((url, html))
+
+
     def check_queue(self):
         return self.work_queue.qsize()
 
@@ -76,7 +81,12 @@ class WorkThread(threading.Thread):
                 if deep >= self.thread_pool.args.deep:
                     flag_get_new_link = False
 
-                new_link = do(url, self.thread_pool.args, flag_get_new_link)
+                html, new_link = do(url, self.thread_pool.args, flag_get_new_link)
+
+                # html添加到待保存队列
+                self.thread_pool.add_save_task(url, html)
+
+                # 添加新任务
                 if new_link:
                     for url in new_link:
                         self.thread_pool.add_task(do, url, deep + 1)

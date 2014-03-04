@@ -61,7 +61,7 @@ def spider(url, args, flag_get_new_link):
                     print 'not match'
                     #self.logging.debug("{0} ignore {1} key not match".format(self.getName(), url[1].encode("utf8")))
 
-            return new_link 
+            return html, new_link 
 
     return get_html(url, args, flag_get_new_link)
 
