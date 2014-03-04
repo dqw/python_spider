@@ -9,21 +9,21 @@ import md5
 from StringIO import StringIO
 from BeautifulSoup import BeautifulSoup
 
-def spider(url, args, new_link):
+def spider(url, args, flag_get_new_link):
 
     # 分析页面，获取链接
     def get_link(html):
-        new_task = []
+        new_link = []
 
         soup = BeautifulSoup(html)
         for link in soup.findAll('a',
                 attrs={'href': re.compile("^http://")}):
             href = link.get('href')
-            new_task.append(href)
+            new_link.append(href)
 
-        return new_task 
+        return new_link 
 
-    def get_html(url, args, new_link):
+    def get_html(url, args, flag_get_new_link):
         try:
             response = urllib2.urlopen(url, timeout=20)
             if response.info().get('Content-Encoding') == 'gzip':
@@ -42,11 +42,11 @@ def spider(url, args, new_link):
             print 'exception'
             #self.logging.error("Unexpected:{0} {1}".format(url[1].encode("utf8"), str(e)))
         else:
-            new_task = []
+            new_link = []
 
             if args.key == "":
-                if new_link:
-                    new_task = get_link(html)
+                if flag_get_new_link:
+                    new_link = get_link(html)
             else:
                 # 下载匹配关键字的页面
                 if not self.encoding:
@@ -54,15 +54,15 @@ def spider(url, args, new_link):
                     self.encoding = charset['encoding']
 
                 match = re.search(re.compile(self.key), html.decode(self.encoding, "ignore"))
-                if match and new_link:
-                    new_task = get_link(html)
+                if match and flag_get_new_link:
+                    new_link = get_link(html)
                 else:
                     print 'not match'
                     #self.logging.debug("{0} ignore {1} key not match".format(self.getName(), url[1].encode("utf8")))
 
-            return new_task 
+            return new_link 
 
-    return get_html(url, args, new_link)
+    return get_html(url, args, flag_get_new_link)
 
 
 
