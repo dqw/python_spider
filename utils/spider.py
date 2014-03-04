@@ -49,12 +49,13 @@ def spider(url, args, flag_get_new_link):
                     new_link = get_link(html)
             else:
                 # 下载匹配关键字的页面
-                if not self.encoding:
+                if not args.encoding:
                     charset = chardet.detect(html)
-                    self.encoding = charset['encoding']
+                    args.encoding = charset['encoding']
 
-                match = re.search(re.compile(self.key), html.decode(self.encoding, "ignore"))
+                match = re.search(re.compile(args.key), html.decode(args.encoding, "ignore"))
                 if match and flag_get_new_link:
+                    print 'match'
                     new_link = get_link(html)
                 else:
                     print 'not match'
