@@ -4,6 +4,7 @@
 import threading
 import Queue
 import md5
+import logging
 
 class ThreadPool(object):
     def __init__(self, thread_num, args):
@@ -30,8 +31,6 @@ class ThreadPool(object):
     def get_task(self):
         #只使用一个线程,能正常退出
         task = self.work_queue.get(block=False)
-        #多线程但是不退出
-        #task = self.work_queue.get()
 
         return task
 
@@ -74,7 +73,6 @@ class WorkThread(threading.Thread):
             try:
                 do, url, deep = self.thread_pool.get_task()
                 self.thread_pool.increase_running()
-                print "{0} downloaded {1} \n".format(threading.current_thread(), url)
 
                 # 判断deep，是否获取新的链接
                 flag_get_new_link = True

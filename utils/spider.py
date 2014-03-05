@@ -1,15 +1,19 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import threading
 import urllib2
 import re
 import gzip
 import chardet
 import md5
+import logging
 from StringIO import StringIO
 from BeautifulSoup import BeautifulSoup
 
 def spider(url, args, flag_get_new_link):
+
+    thread_name = threading.current_thread().getName()
 
     # 分析页面，获取链接
     def get_link(html):
@@ -33,15 +37,14 @@ def spider(url, args, flag_get_new_link):
             else:
                 html = response.read()
         except urllib2.URLError as e:
-            print 'url error'
-            #self.logging.error("URLError:{0} {1}".format(url[1].encode("utf8"), e.reason))
+            logging.error("{0} URLError: {1}".format(url.encode("utf8"), e.reason))
         except urllib2.HTTPError as e:
-            print 'http error'
-            #self.logging.error("HTTPError:{0} {1}".format(url[1].encode("utf8"), e.code))
+            logging.error("{0} HTTPError: {1}".format(url.encode("utf8"), e.code))
         except Exception as e:
-            print 'exception'
-            #self.logging.error("Unexpected:{0} {1}".format(url[1].encode("utf8"), str(e)))
+            logging.error("{0} Unexpected: {1}".format(url.encode("utf8"), str(e)))
         else:
+            logging.debug("{0} downloaded {1}".format(thread_name, url.encode("utf8")))
+
             new_link = []
 
             if args.key == "":
@@ -55,11 +58,10 @@ def spider(url, args, flag_get_new_link):
 
                 match = re.search(re.compile(args.key), html.decode(args.encoding, "ignore"))
                 if match and flag_get_new_link:
-                    print 'match'
+                    logging.debug("{0} {1} match key".format(thread_name, url.encode("utf8")))
                     new_link = get_link(html)
                 else:
-                    print 'not match'
-                    #self.logging.debug("{0} ignore {1} key not match".format(self.getName(), url[1].encode("utf8")))
+                    logging.debug("{0} {1} not match key".format(thread_name, url.encode("utf8")))
 
             return html, new_link 
 

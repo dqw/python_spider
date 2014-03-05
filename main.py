@@ -67,8 +67,6 @@ if __name__ == "__main__":
         level = LEVELS[args.loglevel]
         logging.basicConfig(filename=args.logfile, level=level)
 
-        # queue_url.put([0, args.url, md5.new(args.url).hexdigest()])
-
         thread_pool = ThreadPool(args.thread, args)
         thread_pool.add_task(spider, args.url, 0)
         thread_pool.start_task()
