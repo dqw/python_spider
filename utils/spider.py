@@ -28,6 +28,9 @@ def spider(url, args, flag_get_new_link):
         return new_link 
 
     def get_html(url, args, flag_get_new_link):
+        html = ''
+        new_link = []
+
         try:
             response = urllib2.urlopen(url, timeout=20)
             if response.info().get('Content-Encoding') == 'gzip':
@@ -45,8 +48,6 @@ def spider(url, args, flag_get_new_link):
         else:
             logging.debug("{0} downloaded {1}".format(thread_name, url.encode("utf8")))
 
-            new_link = []
-
             if args.key == "":
                 if flag_get_new_link:
                     new_link = get_link(html)
@@ -62,7 +63,7 @@ def spider(url, args, flag_get_new_link):
                     new_link = get_link(html)
                 else:
                     logging.debug("{0} {1} not match key".format(thread_name, url.encode("utf8")))
-
+        finally: 
             return html, new_link 
 
     return get_html(url, args, flag_get_new_link)

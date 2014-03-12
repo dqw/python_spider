@@ -124,4 +124,4 @@ class PrintProgress(threading.Thread):
             print '总任务数:', tasks_number 
             print '---------------------------------------' 
 
-            time.sleep(1)
+            time.sleep(10)
