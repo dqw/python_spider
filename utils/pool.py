@@ -15,6 +15,8 @@ class ThreadPool(object):
         self.save_queue = Queue.Queue()
         self.threads = []
         self.running = 0
+        self.failure = 0
+        self.success = 0
         self.tasks = {}
         self.__init_thread_pool(thread_num)
 
@@ -46,6 +48,11 @@ class ThreadPool(object):
         # 开始打印进度信息
         PrintProgress(self)
 
+    def increase_success(self):
+        self.success += 1
+
+    def increase_failure(self):
+        self.failure += 1
 
     def increase_running(self):
         self.running += 1
@@ -57,7 +64,7 @@ class ThreadPool(object):
         return self.running
 
     def get_progress_info(self):
-        return self.work_queue.qsize(), len(self.tasks), self.save_queue.qsize()
+        return self.work_queue.qsize(), len(self.tasks), self.save_queue.qsize(), self.success, self.failure
 
     def add_save_task(self, url, html):
         self.save_queue.put((url, html))
@@ -85,8 +92,12 @@ class WorkThread(threading.Thread):
 
                 html, new_link = do(url, self.thread_pool.args, flag_get_new_link)
 
-                # html添加到待保存队列
-                self.thread_pool.add_save_task(url, html)
+                if html == '':
+                    self.thread_pool.increase_failure()
+                else:
+                    self.thread_pool.increase_success()
+                    # html添加到待保存队列
+                    self.thread_pool.add_save_task(url, html)
 
                 # 添加新任务
                 if new_link:
@@ -116,7 +127,7 @@ class PrintProgress(threading.Thread):
             if thread_num <= 0:
                 break
 
-            work_queue_num, tasks_number, save_queue_number = self.thread_pool.get_progress_info()
+            work_queue_num, tasks_number, save_queue_number, success, failure = self.thread_pool.get_progress_info()
 
             print '下载中:', thread_num
             print '待下载:', work_queue_num 

@@ -72,7 +72,9 @@ if __name__ == "__main__":
         thread_pool.start_task()
         thread_pool.wait_all_complete()
 
-        work_queue_num, tasks_number, save_queue_number = thread_pool.get_progress_info()
-        print "任务完成，总下载数：",tasks_number
+        work_queue_num, tasks_number, save_queue_number, success, failure = thread_pool.get_progress_info()
+        print "总任务数：",tasks_number
+        print "成功下载：",success
+        print "下载失败：",failure
         print "花费时间： {0} 秒".format(time.time()-start)
 
