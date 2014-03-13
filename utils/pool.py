@@ -6,6 +6,7 @@ import Queue
 import md5
 import logging
 import time
+import sqlite3
 
 class ThreadPool(object):
     def __init__(self, thread_num, args):
@@ -47,6 +48,8 @@ class ThreadPool(object):
 
         # 开始打印进度信息
         PrintProgress(self)
+        # 开始保存html
+        SaveToSqlite(self, self.args.dbfile)
 
     def increase_success(self):
         self.success += 1
@@ -64,10 +67,22 @@ class ThreadPool(object):
         return self.running
 
     def get_progress_info(self):
-        return self.work_queue.qsize(), len(self.tasks), self.save_queue.qsize(), self.success, self.failure
+        progress_info = {}
+        progress_info['work_queue_number'] = self.work_queue.qsize()
+        progress_info['tasks_number'] = len(self.tasks)
+        progress_info['save_queue_number'] = self.save_queue.qsize() 
+        progress_info['success'] = self.success
+        progress_info['failure'] = self.failure
+        
+        return progress_info
 
     def add_save_task(self, url, html):
         self.save_queue.put((url, html))
+
+    def get_save_task(self):
+        save_task = self.save_queue.get(block=False)
+
+        return save_task
 
     def wait_all_complete(self):
         for item in self.threads:
@@ -123,16 +138,55 @@ class PrintProgress(threading.Thread):
 
     def run(self):
         while True:
-            thread_num = self.thread_pool.get_running()
-            if thread_num <= 0:
+            thread_number = self.thread_pool.get_running()
+            if thread_number <= 0:
                 break
 
-            work_queue_num, tasks_number, save_queue_number, success, failure = self.thread_pool.get_progress_info()
+            progress_info = self.thread_pool.get_progress_info()
 
-            print '下载中:', thread_num
-            print '待下载:', work_queue_num 
-            print '已下载:', save_queue_number 
-            print '总任务数:', tasks_number 
+            print '总任务数:', progress_info['tasks_number'] 
+            print '下载中:', thread_number
+            print '待下载:', progress_info['work_queue_number'] 
+            print '待保存:', progress_info['save_queue_number'] 
             print '---------------------------------------' 
 
             time.sleep(10)
+
+# 保存html
+class SaveToSqlite(threading.Thread):
+    def __init__(self, thread_pool, dbfile):
+        threading.Thread.__init__(self)
+        self.thread_pool = thread_pool
+        self.conn = sqlite3.connect(dbfile, check_same_thread = False)
+        #设置支持中文存储
+        self.conn.text_factory = str
+        self.cmd = self.conn.cursor()
+        self.cmd.execute('''
+            create table if not exists data(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                url text,
+                html text
+            )
+        ''')
+        self.conn.commit()
+        self.start()
+
+    def run(self):
+        while True:
+            try:
+                url, html = self.thread_pool.get_save_task()
+                try:
+                    self.cmd.execute("insert into data (url, html) values (?,?)", (url, html))
+                    self.conn.commit()
+                except Exception as e:
+                    logging.error("Unexpected error:{0}".format(str(e)))
+            except Queue.Empty:
+                thread_number = self.thread_pool.get_running()
+                if thread_number <= 0:
+                    self.conn.close()
+                    break
+            except Exception,e:
+                print str(e)
+                break
+
+
