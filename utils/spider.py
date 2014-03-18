@@ -40,13 +40,13 @@ def spider(url, args, flag_get_new_link):
             else:
                 html = response.read()
         except urllib2.URLError as e:
-            logging.error("{0} URLError: {1}".format(url.encode("utf8"), e.reason))
+            logging.warning("{0} URLError: {1}".format(url.encode("utf8"), e.reason))
         except urllib2.HTTPError as e:
-            logging.error("{0} HTTPError: {1}".format(url.encode("utf8"), e.code))
+            logging.warning("{0} HTTPError: {1}".format(url.encode("utf8"), e.code))
         except Exception as e:
-            logging.error("{0} Unexpected: {1}".format(url.encode("utf8"), str(e)))
+            logging.warning("{0} Unexpected: {1}".format(url.encode("utf8"), str(e)))
         else:
-            logging.debug("{0} downloaded {1}".format(thread_name, url.encode("utf8")))
+            logging.info("{0} downloaded {1}".format(thread_name, url.encode("utf8")))
 
             if args.key == "":
                 if flag_get_new_link:
@@ -59,10 +59,10 @@ def spider(url, args, flag_get_new_link):
 
                 match = re.search(re.compile(args.key), html.decode(args.encoding, "ignore"))
                 if match and flag_get_new_link:
-                    logging.debug("{0} {1} match key".format(thread_name, url.encode("utf8")))
+                    logging.info("{0} {1} match key".format(thread_name, url.encode("utf8")))
                     new_link = get_link(html)
                 else:
-                    logging.debug("{0} {1} not match key".format(thread_name, url.encode("utf8")))
+                    logging.info("{0} {1} not match key".format(thread_name, url.encode("utf8")))
         finally: 
             return html, new_link 
 

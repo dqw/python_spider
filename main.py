@@ -66,14 +66,19 @@ if __name__ == "__main__":
         level = LEVELS[args.loglevel]
         logging.basicConfig(filename=args.logfile, level=level)
 
-        thread_pool = ThreadPool(args.thread, args)
-        thread_pool.add_task(spider, args.url, 0)
-        thread_pool.start_task()
-        thread_pool.wait_all_complete()
+        if args.url != '':
+            thread_pool = ThreadPool(args.thread, args)
+            thread_pool.add_task(spider, args.url, 0)
+            thread_pool.start_task()
+            thread_pool.wait_all_complete()
 
-        progress_info = thread_pool.get_progress_info()
-        print "总任务数：",progress_info['tasks_number']
-        print "成功下载：",progress_info['success']
-        print "下载失败：",progress_info['failure']
-        print "花费时间： {0} 秒".format(time.time()-start)
+            progress_info = thread_pool.get_progress_info()
+            print "总任务数：",progress_info['tasks_number']
+            print "成功下载：",progress_info['success']
+            print "下载失败：",progress_info['failure']
+            print "花费时间： {0} 秒".format(time.time()-start)
+        else:
+            logging.critical("请使用-u参数指定初始url")
+            print "请使用-u参数指定初始url"
+            
 

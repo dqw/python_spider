@@ -6,7 +6,7 @@ import argparse
 def get_args():
     # 参数处理
     parser = argparse.ArgumentParser()
-    parser.add_argument('-u', dest="url", default="http://www.baidu.com.cn", help="爬虫起始地址")
+    parser.add_argument('-u', dest="url", default="", help="爬虫起始地址")
     parser.add_argument("-d", type=int, dest="deep", default=0, help="爬取深度，起始地址为第0级")  
     parser.add_argument("--thread", type=int, dest="thread", default=10, help="爬虫使用的线程数")  
     parser.add_argument('--dbfile', dest="dbfile", default="spider.db", help="存放数据库（sqlite）文件名")

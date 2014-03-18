@@ -3,6 +3,7 @@
 
 import threading
 import time
+import logging
 
 # 打印进度信息
 class PrintProgress(threading.Thread):
@@ -24,6 +25,8 @@ class PrintProgress(threading.Thread):
             print '待下载:', progress_info['work_queue_number'] 
             print '待保存:', progress_info['save_queue_number'] 
             print '---------------------------------------' 
+
+            logging.debug("print progress")
 
             time.sleep(10)
 

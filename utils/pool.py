@@ -19,6 +19,7 @@ class ThreadPool(object):
         self.failure = 0
         self.success = 0
         self.tasks = {}
+        self.thread_name = threading.current_thread().getName()
         self.__init_thread_pool(thread_num)
 
     def __init_thread_pool(self, thread_num):
@@ -31,6 +32,7 @@ class ThreadPool(object):
         if not self.tasks.has_key(url_hash):
             self.tasks[url_hash] = url
             self.work_queue.put((func, url, deep))
+            logging.info("{0} add task {1}".format(self.thread_name, url.encode("utf8")))
 
     def get_task(self):
         #只使用一个线程,能正常退出
@@ -50,6 +52,8 @@ class ThreadPool(object):
         PrintProgress(self)
         # 开始保存html
         SaveToSqlite(self, self.args.dbfile)
+
+        logging.debug("task start")
 
     def increase_success(self):
         self.success += 1
