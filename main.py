@@ -7,7 +7,6 @@ import md5
 import sqlite3
 import time
 from utils.parser import get_args
-from utils.log import PrintLog
 from utils.pool import ThreadPool
 from utils.spider import spider
 
