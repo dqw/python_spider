@@ -4,6 +4,7 @@
 import threading
 import Queue
 import sqlite3
+import logging
 
 # 保存html
 class SaveToSqlite(threading.Thread):
@@ -32,7 +33,7 @@ class SaveToSqlite(threading.Thread):
                     self.cmd.execute("insert into data (url, html) values (?,?)", (url, html))
                     self.conn.commit()
                 except Exception as e:
-                    logging.error("Unexpected error:{0}".format(str(e)))
+                    logging.error("Save error:{0}".format(str(e)))
             except Queue.Empty:
                 thread_number = self.thread_pool.get_running()
                 if thread_number <= 0:

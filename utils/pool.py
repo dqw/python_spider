@@ -53,7 +53,7 @@ class ThreadPool(object):
         # 开始保存html
         SaveToSqlite(self, self.args.dbfile)
 
-        logging.debug("task start")
+        logging.debug("Work start")
 
     def increase_success(self):
         self.success += 1

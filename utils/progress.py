@@ -26,7 +26,7 @@ class PrintProgress(threading.Thread):
             print '待保存:', progress_info['save_queue_number'] 
             print '---------------------------------------' 
 
-            logging.debug("print progress")
+            logging.debug("Print progress")
 
             time.sleep(10)
 

@@ -3,7 +3,6 @@
 
 import logging
 import urllib2
-import md5
 import sqlite3
 import time
 from utils.parser import get_args
@@ -78,7 +77,7 @@ if __name__ == "__main__":
             print "下载失败：",progress_info['failure']
             print "花费时间： {0} 秒".format(time.time()-start)
         else:
-            logging.critical("请使用-u参数指定初始url")
+            logging.critical("No initial url")
             print "请使用-u参数指定初始url"
             
 

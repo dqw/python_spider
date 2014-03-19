@@ -6,7 +6,6 @@ import urllib2
 import re
 import gzip
 import chardet
-import md5
 import logging
 from StringIO import StringIO
 from BeautifulSoup import BeautifulSoup
@@ -40,9 +39,9 @@ def spider(url, args, flag_get_new_link):
             else:
                 html = response.read()
         except urllib2.URLError as e:
-            logging.warning("{0} URLError: {1}".format(url.encode("utf8"), e.reason))
+            logging.warning("{0} URL error: {1}".format(url.encode("utf8"), e.reason))
         except urllib2.HTTPError as e:
-            logging.warning("{0} HTTPError: {1}".format(url.encode("utf8"), e.code))
+            logging.warning("{0} HTTP error: {1}".format(url.encode("utf8"), e.code))
         except Exception as e:
             logging.warning("{0} Unexpected: {1}".format(url.encode("utf8"), str(e)))
         else:
