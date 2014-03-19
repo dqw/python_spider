@@ -23,3 +23,7 @@ python开发的Web爬虫
 3. 支持线程池机制，并发爬取网页
 4. 代码需要详尽的注释，自己需要深刻理解该程序所涉及到的各类知识点
 5. 需要自己实现线程池
+
+### 使用方法
+    #起始地址新浪，下载2级，使用10个线程，保存到sina.db
+    python main.py -u http://www.sina.com.cn -d 1 --thread 10 --dbfile sina.db
