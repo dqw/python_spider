@@ -66,11 +66,13 @@ if __name__ == "__main__":
         logging.basicConfig(filename=args.logfile, level=level)
 
         if args.url != '':
+            # 初始化线程池，开始工作
             thread_pool = ThreadPool(args.thread, args)
             thread_pool.add_task(spider, args.url, 0)
             thread_pool.start_task()
             thread_pool.wait_all_complete()
 
+            # 完成后打印信息
             progress_info = thread_pool.get_progress_info()
             print "总任务数：",progress_info['tasks_number']
             print "成功下载：",progress_info['success']

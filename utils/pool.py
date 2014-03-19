@@ -22,10 +22,12 @@ class ThreadPool(object):
         self.thread_name = threading.current_thread().getName()
         self.__init_thread_pool(thread_num)
 
+    # 线程池初始化
     def __init_thread_pool(self, thread_num):
         for i in range(thread_num):
             self.threads.append(WorkThread(self))
 
+    # 添加下载任务
     def add_task(self, func, url, deep):
         # 记录任务，判断是否已经下载过
         url_hash = md5.new(url.encode("utf8")).hexdigest()
@@ -34,8 +36,8 @@ class ThreadPool(object):
             self.work_queue.put((func, url, deep))
             logging.info("{0} add task {1}".format(self.thread_name, url.encode("utf8")))
 
+    # 获取下载任务
     def get_task(self):
-        #只使用一个线程,能正常退出
         task = self.work_queue.get(block=False)
 
         return task

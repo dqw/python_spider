@@ -26,6 +26,7 @@ def spider(url, args, flag_get_new_link):
 
         return new_link 
 
+    # 获取页面
     def get_html(url, args, flag_get_new_link):
         html = ''
         new_link = []
@@ -51,11 +52,12 @@ def spider(url, args, flag_get_new_link):
                 if flag_get_new_link:
                     new_link = get_link(html)
             else:
-                # 下载匹配关键字的页面
+                # 页面编码处理
                 if not args.encoding:
                     charset = chardet.detect(html)
                     args.encoding = charset['encoding']
 
+                # 下载匹配关键字的页面
                 match = re.search(re.compile(args.key), html.decode(args.encoding, "ignore"))
                 if match and flag_get_new_link:
                     logging.info("{0} {1} match key".format(thread_name, url.encode("utf8")))
