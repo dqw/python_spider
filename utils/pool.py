@@ -24,8 +24,13 @@ class ThreadPool(object):
 
     # 线程池初始化
     def __init_thread_pool(self, thread_num):
+        # 下载线程
         for i in range(thread_num):
             self.threads.append(WorkThread(self))
+        # 打印进度信息线程
+        self.threads.append(PrintProgress(self))
+        # 保存线程 
+        self.threads.append(SaveToSqlite(self, self.args.dbfile))
 
     # 添加下载任务
     def add_task(self, func, url, deep):
@@ -49,11 +54,6 @@ class ThreadPool(object):
     def start_task(self):
         for item in self.threads:
             item.start()
-
-        # 开始打印进度信息
-        PrintProgress(self)
-        # 开始保存html
-        SaveToSqlite(self, self.args.dbfile)
 
         logging.debug("Work start")
 

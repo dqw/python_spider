@@ -23,7 +23,6 @@ class SaveToSqlite(threading.Thread):
             )
         ''')
         self.conn.commit()
-        self.start()
 
     def run(self):
         while True:
