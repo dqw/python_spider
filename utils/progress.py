@@ -15,10 +15,10 @@ class PrintProgress(threading.Thread):
     def run(self):
         while True:
             thread_number = self.thread_pool.get_running()
-            if thread_number <= 0:
-                break
-
             progress_info = self.thread_pool.get_progress_info()
+
+            if thread_number <= 0 and progress_info['save_queue_number'] <= 0:
+                break
 
             print '总任务数:', progress_info['tasks_number']
             print '工作线程:', thread_number
