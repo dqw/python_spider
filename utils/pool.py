@@ -5,8 +5,9 @@ import threading
 import Queue
 import md5
 import logging
-from utils.progress import PrintProgress 
+from utils.progress import PrintProgress
 from utils.save import SaveToSqlite
+
 
 class ThreadPool(object):
     def __init__(self, thread_num, args):
@@ -29,14 +30,14 @@ class ThreadPool(object):
             self.threads.append(WorkThread(self))
         # 打印进度信息线程
         self.threads.append(PrintProgress(self))
-        # 保存线程 
+        # 保存线程
         self.threads.append(SaveToSqlite(self, self.args.dbfile))
 
     # 添加下载任务
     def add_task(self, func, url, deep):
         # 记录任务，判断是否已经下载过
         url_hash = md5.new(url.encode("utf8")).hexdigest()
-        if not self.tasks.has_key(url_hash):
+        if not url_hash in self.tasks:
             self.tasks[url_hash] = url
             self.work_queue.put((func, url, deep))
             logging.info("{0} add task {1}".format(self.thread_name, url.encode("utf8")))
@@ -76,10 +77,10 @@ class ThreadPool(object):
         progress_info = {}
         progress_info['work_queue_number'] = self.work_queue.qsize()
         progress_info['tasks_number'] = len(self.tasks)
-        progress_info['save_queue_number'] = self.save_queue.qsize() 
+        progress_info['save_queue_number'] = self.save_queue.qsize()
         progress_info['success'] = self.success
         progress_info['failure'] = self.failure
-        
+
         return progress_info
 
     def add_save_task(self, url, html):
@@ -94,6 +95,7 @@ class ThreadPool(object):
         for item in self.threads:
             if item.isAlive():
                 item.join()
+
 
 class WorkThread(threading.Thread):
     def __init__(self, thread_pool):
@@ -130,6 +132,6 @@ class WorkThread(threading.Thread):
             except Queue.Empty:
                 if self.thread_pool.get_running() <= 0:
                     break
-            except Exception,e:
+            except Exception, e:
                 print str(e)
                 break

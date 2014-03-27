@@ -9,6 +9,7 @@ from utils.parser import get_args
 from utils.pool import ThreadPool
 from utils.spider import spider
 
+
 # 测试网络连接
 def test_network(url):
     """
@@ -26,10 +27,11 @@ def test_network(url):
     else:
         return response.getcode()
 
+
 # 测试sqlite连接
 def test_sqlite(dbfile):
     """
-    测试是否可以创建并连接sqlite数据库文件，返回True为测试通过 
+    测试是否可以创建并连接sqlite数据库文件，返回True为测试通过
     >>> test_sqlite("test.db")
     True
     """
@@ -56,11 +58,11 @@ if __name__ == "__main__":
 
         # logging初始化，设定日志文件名和记录级别
         LEVELS = {
-            1:logging.CRITICAL,
-            2:logging.ERROR,
-            3:logging.WARNING,
-            4:logging.INFO,
-            5:logging.DEBUG
+            1: logging.CRITICAL,
+            2: logging.ERROR,
+            3: logging.WARNING,
+            4: logging.INFO,
+            5: logging.DEBUG
         }
         level = LEVELS[args.loglevel]
         logging.basicConfig(filename=args.logfile, level=level)
@@ -74,12 +76,10 @@ if __name__ == "__main__":
 
             # 完成后打印信息
             progress_info = thread_pool.get_progress_info()
-            print "总任务数：",progress_info['tasks_number']
-            print "成功下载：",progress_info['success']
-            print "下载失败：",progress_info['failure']
+            print "总任务数：", progress_info['tasks_number']
+            print "成功下载：", progress_info['success']
+            print "下载失败：", progress_info['failure']
             print "花费时间： {0} 秒".format(time.time()-start)
         else:
             logging.critical("No initial url")
             print "请使用-u参数指定初始url"
-            
-

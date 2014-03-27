@@ -3,6 +3,7 @@
 
 import argparse
 
+
 def get_args():
     # 参数处理
     parser = argparse.ArgumentParser()
@@ -19,4 +20,3 @@ def get_args():
     args.key = args.key.decode("utf-8")
 
     return args
-

@@ -10,6 +10,7 @@ import logging
 from StringIO import StringIO
 from BeautifulSoup import BeautifulSoup
 
+
 def spider(url, args, flag_get_new_link):
 
     thread_name = threading.current_thread().getName()
@@ -19,12 +20,11 @@ def spider(url, args, flag_get_new_link):
         new_link = []
 
         soup = BeautifulSoup(html)
-        for link in soup.findAll('a',
-                attrs={'href': re.compile("^http://")}):
+        for link in soup.findAll('a', attrs={'href': re.compile("^http://")}):
             href = link.get('href')
             new_link.append(href)
 
-        return new_link 
+        return new_link
 
     # 获取页面
     def get_html(url, args, flag_get_new_link):
@@ -64,10 +64,7 @@ def spider(url, args, flag_get_new_link):
                     new_link = get_link(html)
                 else:
                     logging.info("{0} {1} not match key".format(thread_name, url.encode("utf8")))
-        finally: 
-            return html, new_link 
+        finally:
+            return html, new_link
 
     return get_html(url, args, flag_get_new_link)
-
-
-

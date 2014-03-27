@@ -6,12 +6,13 @@ import Queue
 import sqlite3
 import logging
 
+
 # 保存html
 class SaveToSqlite(threading.Thread):
     def __init__(self, thread_pool, dbfile):
         threading.Thread.__init__(self)
         self.thread_pool = thread_pool
-        self.conn = sqlite3.connect(dbfile, check_same_thread = False)
+        self.conn = sqlite3.connect(dbfile, check_same_thread=False)
         #设置支持中文存储
         self.conn.text_factory = str
         self.cmd = self.conn.cursor()
@@ -38,8 +39,6 @@ class SaveToSqlite(threading.Thread):
                 if thread_number <= 0:
                     self.conn.close()
                     break
-            except Exception,e:
+            except Exception, e:
                 print str(e)
                 break
-
-
