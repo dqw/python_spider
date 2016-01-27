@@ -5,7 +5,7 @@ python开发的Web爬虫
 ### 功能描述
 
     使用python编写一个网站爬虫程序，支持参数如下：
-    spider.py -u url -d deep -f logfile -l loglevel(1-5)  --testself -thread number --dbfile  filepath  --key=”HTML5”
+    spider.py -u url -d deep -f logfile -l loglevel(1-5)  --testself --thread number --dbfile  filepath  --key=”HTML5”
 
     参数说明：
     -u 指定爬虫开始地址
